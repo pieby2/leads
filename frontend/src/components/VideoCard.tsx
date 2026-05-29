@@ -47,8 +47,16 @@ export default function VideoCard({ video, label }: VideoCardProps) {
         <span className={`video-platform-badge ${platformClass}`}>
           {platformLabel}
         </span>
+        {video.upload_date && (
+          <p className="video-upload-date">Uploaded {video.upload_date}</p>
+        )}
         <h3 className="video-title">{video.title || 'Untitled Video'}</h3>
-        <p className="video-creator">{video.creator || 'Unknown creator'}</p>
+        <p className="video-creator">
+          {video.creator || 'Unknown creator'}
+          {video.follower_count && (
+            <span className="follower-count"> · {formatNumber(video.follower_count)} followers</span>
+          )}
+        </p>
 
         {/* Metrics */}
         <div className="video-metrics">
@@ -79,6 +87,14 @@ export default function VideoCard({ video, label }: VideoCardProps) {
             </div>
           </div>
         </div>
+
+        {video.hashtags && video.hashtags.length > 0 && (
+          <div className="video-hashtags">
+            {video.hashtags.slice(0, 5).map((tag, i) => (
+              <span key={i} className="hashtag-badge">#{tag}</span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

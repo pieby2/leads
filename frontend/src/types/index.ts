@@ -9,6 +9,8 @@ export interface VideoSummary {
   engagement_rate: number | null;
   thumbnail_url: string | null;
   upload_date: string | null;
+  follower_count: number | null;
+  hashtags: string[] | null;
 }
 
 export interface IngestResponse {
@@ -26,8 +28,8 @@ export interface ChatMessage {
 }
 
 export interface Citation {
-  video: 'A' | 'B';
-  chunk_id: string;
+  video_id: string;
+  chunk_index: number;
   text?: string;
 }
 

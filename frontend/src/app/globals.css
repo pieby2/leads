@@ -838,6 +838,39 @@ img {
 .engagement-mid { color: var(--accent-yellow); }
 .engagement-low { color: var(--accent-red); }
 
+/* Follower count */
+.follower-count {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Hashtags */
+.video-hashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.hashtag-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--accent-purple-dim);
+  color: var(--accent-purple);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Upload date */
+.video-upload-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
 /* ---- Chat Panel ---- */
 .chat-panel {
   display: flex;
