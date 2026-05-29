@@ -61,9 +61,9 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           {message.citations.map((c, i) => (
             <span
               key={i}
-              className={`citation-badge citation-${(c.video || 'a').toLowerCase()}`}
+              className={`citation-badge citation-${(c.video_id || 'a').toLowerCase()}`}
             >
-              📄 {c.video}:{c.chunk_id}
+              📄 {c.video_id}:chunk_{c.chunk_index}
             </span>
           ))}
         </div>
