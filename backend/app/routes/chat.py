@@ -62,6 +62,8 @@ async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
             "engagement_rate": v.engagement_rate,
             "thumbnail_url": v.thumbnail_url,
             "upload_date": v.upload_date,
+            "follower_count": v.follower_count,
+            "hashtags": v.hashtags or [],
         }
 
     def event_stream():

@@ -49,6 +49,8 @@ async def get_session(session_id: str, db: AsyncSession = Depends(get_db)):
             engagement_rate=v.engagement_rate,
             thumbnail_url=v.thumbnail_url,
             upload_date=v.upload_date,
+            follower_count=v.follower_count,
+            hashtags=v.hashtags or [],
         ).model_dump()
 
     return {

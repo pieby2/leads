@@ -114,6 +114,8 @@ async def ingest_videos(req: IngestRequest, db: AsyncSession = Depends(get_db)):
                 engagement_rate=engagement,
                 thumbnail_url=meta.get("thumbnail_url"),
                 upload_date=meta.get("upload_date"),
+                follower_count=meta.get("follower_count"),
+                hashtags=meta.get("hashtags", []),
                 transcript_json=transcript,
             )
             db.add(video_record)
@@ -129,6 +131,8 @@ async def ingest_videos(req: IngestRequest, db: AsyncSession = Depends(get_db)):
                 engagement_rate=engagement,
                 thumbnail_url=meta.get("thumbnail_url"),
                 upload_date=meta.get("upload_date"),
+                follower_count=meta.get("follower_count"),
+                hashtags=meta.get("hashtags", []),
             )
 
         # mark session ready
@@ -170,4 +174,6 @@ def _video_to_meta(video: Video) -> dict:
         "thumbnail_url": video.thumbnail_url,
         "upload_date": video.upload_date,
         "platform": video.platform,
+        "follower_count": video.follower_count,
+        "hashtags": video.hashtags or [],
     }

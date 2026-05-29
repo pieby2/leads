@@ -18,6 +18,8 @@ class VideoSummary(BaseModel):
     engagement_rate: Optional[float] = None
     thumbnail_url: Optional[str] = None
     upload_date: Optional[str] = None
+    follower_count: Optional[int] = None
+    hashtags: Optional[list[str]] = None
 
 
 class IngestResponse(BaseModel):
