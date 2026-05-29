@@ -26,6 +26,9 @@ def build_analysis(state: dict) -> dict:
         parts.append(f"Duration: {meta.get('duration_sec', 'N/A')}s")
         parts.append(f"Engagement Rate: {meta.get('engagement_rate', 'N/A')}%")
         parts.append(f"Upload Date: {meta.get('upload_date', 'N/A')}")
+        parts.append(f"Follower Count: {_fmt_number(meta.get('follower_count'))}")
+        hashtags = meta.get("hashtags") or []
+        parts.append(f"Hashtags: {', '.join(hashtags) if hashtags else 'N/A'}")
 
     # for engagement comparisons, add a quick comparison table
     if query_type == "ENGAGEMENT_COMPARISON" and len(videos) == 2:

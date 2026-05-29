@@ -9,8 +9,8 @@ from app.rag.prompts import RAG_SYSTEM_PROMPT
 
 logger = structlog.get_logger(__name__)
 
-# regex to find citation patterns like (A:chunk_3) or (B:chunk_12)
-CITATION_PATTERN = re.compile(r'\(([AB]):chunk_(\d+)\)')
+# regex to find citation patterns like [A:chunk_3] or [B:chunk_12]
+CITATION_PATTERN = re.compile(r'\[([AB]):chunk_(\d+)\]')
 
 
 def generate_answer(state: dict) -> dict:
