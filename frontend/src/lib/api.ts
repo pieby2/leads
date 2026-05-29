@@ -1,0 +1,141 @@
+import { IngestResponse, VideoSummary, SessionData } from '@/types';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+/**
+ * Kick off ingestion for two video URLs.
+ * Returns session ID + initial video metadata.
+ */
+export async function ingestVideos(
+  youtubeUrl: string,
+  instagramUrl: string
+): Promise<IngestResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      youtube_url: youtubeUrl,
+      instagram_url: instagramUrl,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Ingestion failed (${res.status})`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Stream chat responses via SSE using fetch + ReadableStream.
+ * Calls onToken for each text chunk, onDone when the stream ends.
+ */
+export async function streamChat(
+  sessionId: string,
+  message: string,
+  onToken: (token: string) => void,
+  onDone: (citations: any[]) => void,
+  onError: (error: string) => void
+): Promise<void> {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: sessionId,
+        message,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      onError(body.detail || `Chat failed (${res.status})`);
+      return;
+    }
+
+    const reader = res.body?.getReader();
+    if (!reader) {
+      onError('No response stream available');
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let citations: any[] = [];
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      // keep last incomplete line in buffer
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+        const data = trimmed.slice(6);
+        if (data === '[DONE]') {
+          onDone(citations);
+          return;
+        }
+
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.token) {
+            onToken(parsed.token);
+          }
+          if (parsed.citations) {
+            citations = parsed.citations;
+          }
+          // handle error events from the stream
+          if (parsed.error) {
+            onError(parsed.error);
+            return;
+          }
+        } catch {
+          // not JSON, treat as raw text token
+          onToken(data);
+        }
+      }
+    }
+
+    // stream ended without [DONE] — still call onDone
+    onDone(citations);
+  } catch (err: any) {
+    onError(err.message || 'Connection failed');
+  }
+}
+
+/**
+ * Fetch session data (video metadata + status).
+ */
+export async function getSession(sessionId: string): Promise<SessionData> {
+  const res = await fetch(`${API_BASE}/api/v1/session/${sessionId}`);
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Failed to load session (${res.status})`);
+  }
+
+  return res.json();
+}
+
+// -- Helpers --
+
+export function formatNumber(n: number | null): string {
+  if (n === null || n === undefined) return '—';
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1_000) return (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return n.toLocaleString();
+}
+
+export function formatDuration(seconds: number | null): string {
+  if (!seconds) return '—';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
