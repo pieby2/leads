@@ -5,7 +5,7 @@ from sqlalchemy import (
     Column, String, BigInteger, Float, DateTime, JSON, Text,
     Index,
 )
-from sqlalchemy.dialects.postgresql import UUID
+
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -26,7 +26,7 @@ class Session(Base):
 class Video(Base):
     __tablename__ = "videos"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     session_id = Column(String, nullable=False, index=True)
     video_id = Column(String, nullable=False)  # 'A' or 'B'
     source_url = Column(String, nullable=False)
@@ -41,6 +41,8 @@ class Video(Base):
     engagement_rate = Column(Float, nullable=True)
     thumbnail_url = Column(Text, nullable=True)
     upload_date = Column(String, nullable=True)
+    follower_count = Column(BigInteger, nullable=True)
+    hashtags = Column(JSON, nullable=True)
 
     transcript_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
