@@ -42,6 +42,9 @@ class YouTubeService:
             with yt_dlp.YoutubeDL(self._ydl_opts) as ydl:
                 info = ydl.extract_info(str(url), download=False)
 
+            d = info.get("upload_date") or ""
+            upload_date = f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 else d
+
             return {
                 "title": info.get("title"),
                 "creator": info.get("channel") or info.get("uploader"),
@@ -49,13 +52,15 @@ class YouTubeService:
                 "likes": info.get("like_count"),
                 "comments": info.get("comment_count"),
                 "duration_sec": info.get("duration"),
-                "upload_date": info.get("upload_date"),
+                "upload_date": upload_date,
                 "thumbnail_url": info.get("thumbnail"),
                 "platform": "youtube",
+                "follower_count": info.get("channel_follower_count"),
+                "hashtags": info.get("tags", []),
             }
         except Exception as e:
             logger.error("youtube metadata fetch failed", url=url, error=str(e))
-            return {"platform": "youtube", "title": None, "creator": None}
+            return {"platform": "youtube", "title": None, "creator": None, "follower_count": None, "hashtags": []}
 
     def fetch_transcript(self, url: str) -> list[dict]:
         """Try youtube-transcript-api first. Returns list of segments."""
