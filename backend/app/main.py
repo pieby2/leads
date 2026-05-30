@@ -2,8 +2,11 @@ import uuid
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
+import redis.asyncio as redis
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
 
 from app.config import get_settings
 from app.database import create_tables
@@ -34,9 +37,14 @@ async def lifespan(app: FastAPI):
     vs = VectorStoreService(settings.qdrant_host, settings.qdrant_port)
     vs.ensure_collection(settings.qdrant_collection, settings.embedding_dim)
 
+    # initialize rate limiter
+    redis_conn = redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+    await FastAPILimiter.init(redis_conn)
+
     yield
 
     logger.info("shutting down")
+    await redis_conn.close()
 
 
 app = FastAPI(
@@ -72,8 +80,10 @@ async def health():
 
 
 # mount route modules
-from app.routes import ingest, chat, session  # noqa: E402
+from app.routes import ingest, chat, session, auth, stripe  # noqa: E402
 
-app.include_router(ingest.router)
-app.include_router(chat.router)
+app.include_router(auth.router, prefix="/api/auth")
+app.include_router(stripe.router)
+app.include_router(ingest.router, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+app.include_router(chat.router, dependencies=[Depends(RateLimiter(times=20, seconds=60))])
 app.include_router(session.router)

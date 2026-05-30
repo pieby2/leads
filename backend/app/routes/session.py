@@ -7,13 +7,14 @@ import structlog
 from app.database import get_db
 from app.db.models import Session, Video
 from app.models import VideoSummary, ErrorResponse
+from app.core.auth import get_current_user
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["session"])
 
 
 @router.get("/session/{session_id}")
-async def get_session(session_id: str, db: AsyncSession = Depends(get_db)):
+async def get_session(session_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Return session metadata and video summaries."""
 
     result = await db.execute(

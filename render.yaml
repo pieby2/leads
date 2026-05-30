@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: vidcompare-frontend
+    env: static
+    buildCommand: "cd frontend && npm install && npm run build"
+    staticPublishPath: ./frontend/out # or ./frontend/dist based on framework
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://vidcompare-backend.onrender.com"
+
+  - type: web
+    name: vidcompare-backend
+    env: python
+    buildCommand: "cd backend && pip install -r requirements.txt && alembic upgrade head"
+    startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: vidcompare-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: vidcompare-redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+
+  - type: redis
+    name: vidcompare-redis
+    plan: free
+
+databases:
+  - name: vidcompare-db
+    plan: free

@@ -8,7 +8,7 @@ import structlog
 
 from app.config import get_settings
 from app.database import get_db
-from app.db.models import Session, Video
+from app.db.models import Session, Video, User
 from app.models import IngestRequest, IngestResponse, VideoSummary, ErrorResponse
 from app.services.youtube import YouTubeService
 from app.services.instagram import InstagramService
@@ -16,6 +16,7 @@ from app.services.transcription import TranscriptionService
 from app.services.chunking import chunk_transcript, compute_engagement_rate
 from app.services.embeddings import EmbeddingClient
 from app.services.vector_store import VectorStoreService
+from app.core.auth import get_current_user
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["ingest"])
@@ -30,14 +31,35 @@ vector_store = VectorStoreService(settings.qdrant_host, settings.qdrant_port)
 
 
 @router.post("/ingest", response_model=IngestResponse)
-async def ingest_videos(req: IngestRequest, db: AsyncSession = Depends(get_db)):
+async def ingest_videos(
+    req: IngestRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Ingest a YouTube video (A) and an Instagram reel (B) for comparison."""
+    
+    # Check usage limits
+    limit = 3 if current_user.tier == "free" else 100
+    if current_user.usage_this_month >= limit:
+        return JSONResponse(
+            status_code=403,
+            content=ErrorResponse(
+                error_code="USAGE_LIMIT_EXCEEDED",
+                message=f"Usage limit exceeded. Upgrade to Pro for more usage."
+            ).model_dump(),
+        )
+
     session_id = str(uuid.uuid4())
 
     try:
+        # increment usage
+        current_user.usage_this_month += 1
+        db.add(current_user)
+
         # create session record
         session = Session(
             id=session_id,
+            user_id=current_user.id,
             youtube_url=str(req.youtube_url),
             instagram_url=str(req.instagram_url),
             status="processing",
@@ -54,7 +76,7 @@ async def ingest_videos(req: IngestRequest, db: AsyncSession = Depends(get_db)):
         ]:
             url_str = str(url)
 
-            # check cache — if we already ingested this URL, reuse metadata
+            # check cache ?" if we already ingested this URL, reuse metadata
             cached = await _check_cache(db, url_str)
             if cached:
                 logger.info("cache hit", url=url_str, video_id=video_id)
@@ -102,6 +124,7 @@ async def ingest_videos(req: IngestRequest, db: AsyncSession = Depends(get_db)):
             # save to DB
             video_record = Video(
                 session_id=session_id,
+                user_id=current_user.id,
                 video_id=video_id,
                 source_url=url_str,
                 platform=platform,
@@ -176,4 +199,4 @@ def _video_to_meta(video: Video) -> dict:
         "platform": video.platform,
         "follower_count": video.follower_count,
         "hashtags": video.hashtags or [],
-    }
+    } }

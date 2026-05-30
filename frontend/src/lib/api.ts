@@ -1,6 +1,17 @@
 import { IngestResponse, VideoSummary, SessionData } from '@/types';
+import { getSession as getNextAuthSession } from 'next-auth/react';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+async function getHeaders(customHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
+  const session = await getNextAuthSession();
+  const token = (session as any)?.accessToken;
+  const headers: Record<string, string> = { ...customHeaders };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 /**
  * Kick off ingestion for two video URLs.
@@ -10,9 +21,10 @@ export async function ingestVideos(
   youtubeUrl: string,
   instagramUrl: string
 ): Promise<IngestResponse> {
+  const headers = await getHeaders({ 'Content-Type': 'application/json' });
   const res = await fetch(`${API_BASE}/api/v1/ingest`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({
       youtube_url: youtubeUrl,
       instagram_url: instagramUrl,
@@ -39,9 +51,10 @@ export async function streamChat(
   onError: (error: string) => void
 ): Promise<void> {
   try {
+    const headers = await getHeaders({ 'Content-Type': 'application/json' });
     const res = await fetch(`${API_BASE}/api/v1/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         session_id: sessionId,
         message,
@@ -114,11 +127,27 @@ export async function streamChat(
  * Fetch session data (video metadata + status).
  */
 export async function getSession(sessionId: string): Promise<SessionData> {
-  const res = await fetch(`${API_BASE}/api/v1/session/${sessionId}`);
+  const headers = await getHeaders();
+  const res = await fetch(`${API_BASE}/api/v1/session/${sessionId}`, { headers });
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.detail || `Failed to load session (${res.status})`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Fetch user sessions (requires auth)
+ */
+export async function getUserSessions() {
+  const headers = await getHeaders();
+  const res = await fetch(`${API_BASE}/api/v1/session/my-sessions`, { headers });
+  
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `Failed to load user sessions (${res.status})`);
   }
 
   return res.json();

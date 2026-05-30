@@ -10,13 +10,18 @@ from app.database import get_db
 from app.db.models import Session, Video
 from app.models import ChatRequest, ErrorResponse
 from app.rag.graph import run_rag_graph_stream
+from app.core.auth import get_current_user
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 
 @router.post("/chat")
-async def chat(req: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(
+    req: ChatRequest, 
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     """Stream a RAG-powered chat response for a video comparison session."""
 
     # validate session exists and is ready

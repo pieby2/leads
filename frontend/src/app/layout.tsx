@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import Providers from '@/components/Providers';
 
 export const metadata: Metadata = {
   title: 'VidCompare — AI Video Analysis',
@@ -19,9 +20,11 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body>
-        <div className="page-wrapper">
-          {children}
-        </div>
+        <Providers>
+          <div className="page-wrapper">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );

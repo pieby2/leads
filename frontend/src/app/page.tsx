@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import UrlForm from '@/components/UrlForm';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -34,9 +38,17 @@ export default function LandingPage() {
           hooks, and content strategy so you can understand what works and why.
         </p>
 
-        <div className="url-form-wrapper">
-          <UrlForm />
-        </div>
+        {status === 'authenticated' ? (
+          <div className="url-form-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <UrlForm />
+            <button className="btn-secondary" onClick={() => router.push('/dashboard')}>Go to Dashboard</button>
+          </div>
+        ) : (
+          <div className="auth-buttons" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
+            <button className="btn-primary" onClick={() => router.push('/api/auth/signin')}>Log In</button>
+            <button className="btn-secondary" onClick={() => router.push('/api/auth/signin')}>Sign Up</button>
+          </div>
+        )}
       </section>
 
       {/* Features */}
