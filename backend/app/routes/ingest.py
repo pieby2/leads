@@ -23,12 +23,8 @@ router = APIRouter(prefix="/api/v1", tags=["ingest"])
 
 settings = get_settings()
 
-yt_service = YouTubeService()
-ig_service = InstagramService()
 transcription_service = TranscriptionService()
 embedder = EmbeddingClient()
-vector_store = VectorStoreService(settings.qdrant_host, settings.qdrant_port)
-
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_videos(
@@ -83,12 +79,15 @@ async def ingest_videos(
                 meta = _video_to_meta(cached)
                 transcript = cached.transcript_json or []
             else:
+                yt_service = YouTubeService(current_user.youtube_access_token)
+                ig_service = InstagramService(current_user.instagram_access_token)
+                
                 # fetch fresh metadata + transcript
                 if platform == "youtube":
-                    meta = yt_service.fetch_metadata(url_str)
+                    meta = await yt_service.fetch_metadata(url_str)
                     transcript = yt_service.fetch_transcript(url_str)
                 else:
-                    meta = ig_service.fetch_metadata(url_str)
+                    meta = await ig_service.fetch_metadata(url_str)
                     transcript = ig_service.fetch_transcript(url_str)
 
                 # whisper fallback if no transcript
@@ -113,7 +112,7 @@ async def ingest_videos(
             if chunks:
                 texts = [c["text"] for c in chunks]
                 embeddings = embedder.embed_texts(texts)
-                vector_store.upsert_chunks(
+                VectorStoreService(settings.qdrant_host, settings.qdrant_port).upsert_chunks(
                     session_id=session_id,
                     video_id=video_id,
                     chunks=chunks,
@@ -199,4 +198,4 @@ def _video_to_meta(video: Video) -> dict:
         "platform": video.platform,
         "follower_count": video.follower_count,
         "hashtags": video.hashtags or [],
-    } }
+    }

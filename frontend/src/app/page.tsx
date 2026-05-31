@@ -46,7 +46,7 @@ export default function LandingPage() {
         ) : (
           <div className="auth-buttons" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
             <button className="btn-primary" onClick={() => router.push('/api/auth/signin')}>Log In</button>
-            <button className="btn-secondary" onClick={() => router.push('/api/auth/signin')}>Sign Up</button>
+            <button className="btn-secondary" onClick={() => router.push('/signup')}>Sign Up</button>
           </div>
         )}
       </section>

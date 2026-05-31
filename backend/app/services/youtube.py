@@ -11,11 +11,13 @@ logger = structlog.get_logger(__name__)
 class YouTubeService:
     """Handles YouTube metadata and transcript fetching."""
 
-    _ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "skip_download": True,
-    }
+    def __init__(self, access_token: str | None = None):
+        self.access_token = access_token
+        self._ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+        }
 
     def extract_video_id(self, url: str) -> str:
         """Pull video ID from various YouTube URL formats."""
@@ -36,8 +38,48 @@ class YouTubeService:
         match = re.search(r"(?:v=|/)([0-9A-Za-z_-]{11})", str(url))
         return match.group(1) if match else None
 
-    def fetch_metadata(self, url: str) -> dict:
-        """Grab metadata via yt-dlp. Returns a flat dict."""
+    async def fetch_metadata(self, url: str) -> dict:
+        """Grab metadata via official API if authenticated, else fallback to yt-dlp."""
+        video_id = self.extract_video_id(url)
+        
+        if self.access_token and video_id:
+            try:
+                import httpx
+                api_url = f"https://www.googleapis.com/youtube/v3/videos?id={video_id}&part=snippet,statistics"
+                headers = {"Authorization": f"Bearer {self.access_token}"}
+                
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(api_url, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("items"):
+                            item = data["items"][0]
+                            snippet = item.get("snippet", {})
+                            stats = item.get("statistics", {})
+                            
+                            d = snippet.get("publishedAt", "")[:10]
+                            
+                            thumbnails = snippet.get("thumbnails", {})
+                            best_thumb = thumbnails.get("maxres") or thumbnails.get("high") or thumbnails.get("default", {})
+                            
+                            return {
+                                "title": snippet.get("title"),
+                                "creator": snippet.get("channelTitle"),
+                                "views": int(stats.get("viewCount", 0)),
+                                "likes": int(stats.get("likeCount", 0)),
+                                "comments": int(stats.get("commentCount", 0)),
+                                "duration_sec": None, # Data API requires contentDetails part for duration (PTM format parsing)
+                                "upload_date": d,
+                                "thumbnail_url": best_thumb.get("url"),
+                                "platform": "youtube",
+                                "follower_count": None, # Requires another API call to channels
+                                "hashtags": snippet.get("tags", []),
+                            }
+            except Exception as e:
+                logger.error("youtube official api fetch failed", url=url, error=str(e))
+                # Fall through to yt-dlp
+
+        # Fallback to scraping
         try:
             with yt_dlp.YoutubeDL(self._ydl_opts) as ydl:
                 info = ydl.extract_info(str(url), download=False)
@@ -59,7 +101,7 @@ class YouTubeService:
                 "hashtags": info.get("tags", []),
             }
         except Exception as e:
-            logger.error("youtube metadata fetch failed", url=url, error=str(e))
+            logger.error("youtube metadata fetch fallback failed", url=url, error=str(e))
             return {"platform": "youtube", "title": None, "creator": None, "follower_count": None, "hashtags": []}
 
     def fetch_transcript(self, url: str) -> list[dict]:

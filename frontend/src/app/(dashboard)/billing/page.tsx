@@ -27,10 +27,10 @@ export default function BillingPage() {
       
       <div style={{ padding: '1.5rem', border: '1px solid #333', borderRadius: '8px', marginBottom: '2rem' }}>
         <h2>Pro Plan</h2>
-        <p>$15 / month</p>
+        <p>$10 / month</p>
         <ul style={{ margin: '1rem 0', paddingLeft: '1.5rem', color: '#aaa' }}>
           <li>Unlimited video comparisons</li>
-          <li>Priority AI analysis</li>
+          <li>Fast GPT-4o-mini Analysis</li>
           <li>Advanced chat history</li>
         </ul>
         <button 

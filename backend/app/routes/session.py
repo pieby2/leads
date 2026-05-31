@@ -13,6 +13,27 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["session"])
 
 
+@router.get("/session/my-sessions")
+async def get_my_sessions(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
+    """Return all sessions for the current user."""
+    result = await db.execute(
+        select(Session)
+        .where(Session.user_id == current_user.id)
+        .order_by(Session.created_at.desc())
+    )
+    sessions = result.scalars().all()
+    
+    return [
+        {
+            "id": s.id,
+            "status": s.status,
+            "youtube_url": s.youtube_url,
+            "instagram_url": s.instagram_url,
+            "created_at": str(s.created_at),
+        }
+        for s in sessions
+    ]
+
 @router.get("/session/{session_id}")
 async def get_session(session_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Return session metadata and video summaries."""

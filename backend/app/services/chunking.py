@@ -20,8 +20,8 @@ def chunk_transcript(
     words_with_time = []
     for seg in segments:
         tokens = seg["text"].split()
-        seg_start = seg.get("start", 0.0)
-        seg_dur = seg.get("duration", 0.0)
+        seg_start = seg.get("start") or 0.0
+        seg_dur = seg.get("duration") or 0.0
 
         # distribute time evenly across words in segment
         if len(tokens) > 0 and seg_dur > 0:

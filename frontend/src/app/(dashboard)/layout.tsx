@@ -16,6 +16,7 @@ export default async function DashboardLayout({
       <nav className="dashboard-nav" style={{ padding: '1rem', background: '#1a1a24', display: 'flex', gap: '1rem' }}>
         <Link href="/" style={{ fontWeight: 'bold' }}>VidCompare</Link>
         <Link href="/dashboard">Dashboard</Link>
+        <Link href="/integrations">Integrations</Link>
         <Link href="/billing">Billing</Link>
       </nav>
       <main style={{ padding: '2rem' }}>

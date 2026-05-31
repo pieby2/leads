@@ -1,12 +1,16 @@
 import uuid
+import sys
 from contextlib import asynccontextmanager
+
+# Force UTF-8 encoding for stdout/stderr to prevent logging crashes on Windows
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
 import structlog
 from fastapi import FastAPI, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import redis.asyncio as redis
-from fastapi_limiter import FastAPILimiter
-from fastapi_limiter.depends import RateLimiter
 
 from app.config import get_settings
 from app.database import create_tables
@@ -37,14 +41,20 @@ async def lifespan(app: FastAPI):
     vs = VectorStoreService(settings.qdrant_host, settings.qdrant_port)
     vs.ensure_collection(settings.qdrant_collection, settings.embedding_dim)
 
-    # initialize rate limiter
-    redis_conn = redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
-    await FastAPILimiter.init(redis_conn)
+    # Check connection (without limiter for now)
+    redis_conn = None
+    try:
+        redis_conn = redis.from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        await redis_conn.ping()
+        logger.info("redis connection ok")
+    except Exception as e:
+        logger.warning(f"Failed to connect to Redis: {e}")
 
     yield
 
     logger.info("shutting down")
-    await redis_conn.close()
+    if redis_conn:
+        await redis_conn.close()
 
 
 app = FastAPI(
@@ -53,10 +63,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — wide open for dev, lock down later
+# CORS — lock down to frontend URL
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,10 +90,11 @@ async def health():
 
 
 # mount route modules
-from app.routes import ingest, chat, session, auth, stripe  # noqa: E402
+from app.routes import ingest, chat, session, auth, stripe, oauth  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/auth")
+app.include_router(oauth.router)
 app.include_router(stripe.router)
-app.include_router(ingest.router, dependencies=[Depends(RateLimiter(times=5, seconds=60))])
-app.include_router(chat.router, dependencies=[Depends(RateLimiter(times=20, seconds=60))])
+app.include_router(ingest.router)
+app.include_router(chat.router)
 app.include_router(session.router)

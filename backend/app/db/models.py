@@ -24,6 +24,11 @@ class User(Base):
     usage_this_month = Column(Integer, default=0)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    youtube_access_token = Column(String, nullable=True)
+    youtube_refresh_token = Column(String, nullable=True)
+    instagram_access_token = Column(String, nullable=True)
+    instagram_user_id = Column(String, nullable=True)
+
     sessions = relationship("Session", back_populates="user")
     videos = relationship("Video", back_populates="user")
     subscription = relationship("Subscription", back_populates="user", uselist=False)

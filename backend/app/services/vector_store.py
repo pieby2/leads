@@ -10,9 +10,13 @@ logger = structlog.get_logger(__name__)
 
 
 class VectorStoreService:
+    _local_client = None
+
     def __init__(self, host: str = "localhost", port: int = 6333):
         if host == "local":
-            self.client = QdrantClient(path="./qdrant_data")
+            if VectorStoreService._local_client is None:
+                VectorStoreService._local_client = QdrantClient(path="./qdrant_data")
+            self.client = VectorStoreService._local_client
         else:
             self.client = QdrantClient(host=host, port=port)
 
