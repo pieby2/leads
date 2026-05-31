@@ -6,7 +6,7 @@ services:
     name: vidcompare-backend
     env: docker
     rootDir: backend
-    plan: starter # Recommended because ffmpeg and AI parsing require some CPU/RAM
+    plan: free # Note: ffmpeg and AI parsing might be slow on the free tier
     envVars:
       # Database connection (using Render's managed Postgres)
       - key: DATABASE_URL
