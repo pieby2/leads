@@ -10,7 +10,13 @@ engine_kwargs = {"echo": False}
 if not settings.database_url.startswith("sqlite"):
     engine_kwargs.update({"pool_size": 5, "max_overflow": 10})
 
-engine = create_async_engine(settings.database_url, **engine_kwargs)
+db_url = settings.database_url
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+engine = create_async_engine(db_url, **engine_kwargs)
 
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
