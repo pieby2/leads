@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # AI Provider Settings
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.5-flash"
     embedding_model: str = "gemini-embedding-2"
 
     # vector dimensions for gemini-embedding-2

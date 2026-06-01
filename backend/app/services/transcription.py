@@ -58,7 +58,7 @@ class TranscriptionService:
             prompt = "Transcribe the audio. Return the transcript as a JSON array of objects, where each object has 'text' (string), 'start' (float in seconds), and 'duration' (float in seconds)."
             
             result = self.client.models.generate_content(
-                model="gemini-1.5-flash",
+                model=get_settings().gemini_model,
                 contents=[gemini_file, prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
