@@ -3,7 +3,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    openai_api_key: str = "sk-your-key-here"
+
     database_url: str = "sqlite+aiosqlite:///./vidcompare.db"
     redis_url: str = "redis://localhost:6379"
 

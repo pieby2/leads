@@ -21,7 +21,7 @@ def retrieve_context(state: dict) -> dict:
         return {"retrieved_chunks": []}
 
     # embed the query
-    embedder = EmbeddingClient(api_key=state.get("openai_api_key"))
+    embedder = EmbeddingClient(api_key=state.get("gemini_api_key"))
     query_embedding = embedder.embed_query(user_query)
 
     vs = VectorStoreService(settings.qdrant_host, settings.qdrant_port)

@@ -12,4 +12,4 @@ class RAGState(TypedDict, total=False):
     analysis_context: str  # formatted context string for the generator
     response: str          # final generated answer
     citations: list        # [{'video_id': 'A', 'chunk_index': 3}, ...]
-    openai_api_key: str    # optional custom API key
+    gemini_api_key: str    # optional custom API key
