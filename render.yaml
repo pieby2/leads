@@ -60,6 +60,10 @@ services:
       # Pass the backend's URL to the frontend dynamically
       - key: NEXT_PUBLIC_API_URL
         value: "https://vidcompare-backend.onrender.com"
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        value: "https://vidcompare-frontend.onrender.com"
 
   # ----------------------------------------
   # REDIS: Background Tasks/Caching
