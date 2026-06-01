@@ -66,7 +66,7 @@ class InstagramService:
         try:
             items = await self._run_actor(
                 "apify~instagram-profile-scraper",
-                {"username": [username.lstrip("@")]},
+                {"usernames": [username.lstrip("@")]},
                 timeout=60,
             )
             if items:

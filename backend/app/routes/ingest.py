@@ -111,15 +111,18 @@ async def ingest_videos(
 
             # embed and store chunks (only if we have them)
             if chunks:
-                texts = [c["text"] for c in chunks]
-                embeddings = embedder.embed_texts(texts)
-                VectorStoreService(settings.qdrant_host, settings.qdrant_port).upsert_chunks(
-                    session_id=session_id,
-                    video_id=video_id,
-                    chunks=chunks,
-                    embeddings=embeddings,
-                    metadata={"platform": platform, "source_url": url_str},
-                )
+                try:
+                    texts = [c["text"] for c in chunks]
+                    embeddings = embedder.embed_texts(texts)
+                    VectorStoreService(settings.qdrant_host, settings.qdrant_port).upsert_chunks(
+                        session_id=session_id,
+                        video_id=video_id,
+                        chunks=chunks,
+                        embeddings=embeddings,
+                        metadata={"platform": platform, "source_url": url_str},
+                    )
+                except Exception as e:
+                    logger.error("failed to embed or store chunks", error=str(e), video_id=video_id)
 
             # save to DB
             video_record = Video(
