@@ -86,8 +86,20 @@ async def chat(
                     data = json.dumps({"token": token, "done": False})
                 yield f"data: {data}\n\n"
         except Exception as e:
-            logger.error("streaming error", error=str(e))
-            error_data = json.dumps({"token": "", "done": True, "error": str(e), "citations": []})
+            import tenacity
+            err_msg = str(e)
+            if isinstance(e, tenacity.RetryError):
+                underlying = e.last_attempt.exception()
+                err_msg = f"Failed after retries: {str(underlying)}"
+                if "429" in str(underlying):
+                    err_msg = "Google Gemini Rate Limit Exceeded: Please check your billing dashboard or try again later."
+                elif "API key not valid" in str(underlying):
+                    err_msg = "API key not valid. Please pass a valid Google Gemini API key."
+                else:
+                    err_msg = str(underlying)
+                    
+            logger.error("streaming error", error=err_msg)
+            error_data = json.dumps({"token": "", "done": True, "error": err_msg, "citations": []})
             yield f"data: {error_data}\n\n"
 
     return StreamingResponse(
