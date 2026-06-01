@@ -32,7 +32,7 @@ class IngestResponse(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str
     message: str
-    openai_api_key: Optional[str] = None
+    gemini_api_key: str | None = None
 
 
 class ChatChunk(BaseModel):

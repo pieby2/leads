@@ -78,7 +78,7 @@ async def chat(
                 session_id=req.session_id,
                 message=req.message,
                 videos_metadata=videos_metadata,
-                openai_api_key=req.openai_api_key,
+                gemini_api_key=req.gemini_api_key,
             ):
                 if done:
                     data = json.dumps({"token": "", "done": True, "citations": citations or []})

@@ -78,7 +78,7 @@ def run_rag_graph_stream(
     message: str,
     videos_metadata: dict,
     chat_history: list[dict] | None = None,
-    openai_api_key: str | None = None,
+    gemini_api_key: str | None = None,
 ):
     """Execute route + retrieve + analyze, then stream the generation step.
     Yields (token, done, citations) tuples.
@@ -98,8 +98,8 @@ def run_rag_graph_stream(
         "response": "",
         "citations": [],
     }
-    if openai_api_key:
-        initial_state["openai_api_key"] = openai_api_key
+    if gemini_api_key:
+        initial_state["gemini_api_key"] = gemini_api_key
 
     # run the non-streaming nodes first
     state = dict(initial_state)

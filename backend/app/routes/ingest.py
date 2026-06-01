@@ -31,8 +31,19 @@ async def ingest_videos(
 ):
     """Ingest a YouTube video (A) and an Instagram reel (B) for comparison."""
     
-    transcription_service = TranscriptionService(api_key=req.gemini_api_key)
-    embedder = EmbeddingClient(api_key=req.gemini_api_key)
+    # Check API key early
+    api_key = req.gemini_api_key or settings.gemini_api_key
+    if not api_key:
+        return JSONResponse(
+            status_code=400,
+            content=ErrorResponse(
+                error_code="MISSING_API_KEY",
+                message="API key must be set when using the Google AI API. Please provide a key or configure the backend."
+            ).model_dump(),
+        )
+
+    transcription_service = TranscriptionService(api_key=api_key)
+    embedder = EmbeddingClient(api_key=api_key)
     
     # Check usage limits
     limit = 100 if current_user.tier == "free" else 1000
