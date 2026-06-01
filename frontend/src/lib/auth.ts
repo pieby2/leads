@@ -7,8 +7,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://vidcompare-backend.
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      clientId: process.env.YOUTUBE_CLIENT_ID || '',
+      clientSecret: process.env.YOUTUBE_CLIENT_SECRET || '',
       authorization: {
         params: {
           scope: 'openid email profile https://www.googleapis.com/auth/youtube.readonly'
