@@ -59,10 +59,7 @@ services:
     envVars:
       # Pass the backend's URL to the frontend dynamically
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: vidcompare-backend
-          envVarKey: RENDER_EXTERNAL_URL
+        value: "https://vidcompare-backend.onrender.com"
 
   # ----------------------------------------
   # REDIS: Background Tasks/Caching

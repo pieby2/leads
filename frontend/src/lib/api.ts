@@ -1,7 +1,7 @@
 import { IngestResponse, VideoSummary, SessionData } from '@/types';
 import { getSession as getNextAuthSession } from 'next-auth/react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://vidcompare-backend.onrender.com';
 
 async function getHeaders(customHeaders: Record<string, string> = {}): Promise<Record<string, string>> {
   const session = await getNextAuthSession();
