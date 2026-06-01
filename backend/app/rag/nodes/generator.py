@@ -18,7 +18,7 @@ def generate_answer(state: dict) -> dict:
     For streaming, use generate_answer_stream instead.
     """
     settings = get_settings()
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(api_key=state.get("openai_api_key") or settings.openai_api_key)
 
     messages = _build_messages(state)
 
@@ -40,7 +40,7 @@ def generate_answer_stream(state: dict):
     Returns a generator of (token, is_done, citations) tuples.
     """
     settings = get_settings()
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(api_key=state.get("openai_api_key") or settings.openai_api_key)
 
     messages = _build_messages(state)
 

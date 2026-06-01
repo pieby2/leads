@@ -16,7 +16,7 @@ def route_query(state: dict) -> dict:
     classification call, and mini is way cheaper for routing.
     """
     settings = get_settings()
-    client = OpenAI(api_key=settings.openai_api_key)
+    client = OpenAI(api_key=state.get("openai_api_key") or settings.openai_api_key)
 
     user_query = state["user_query"]
     videos = state.get("videos", {})

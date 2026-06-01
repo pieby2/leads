@@ -5,6 +5,7 @@ from typing import Optional
 class IngestRequest(BaseModel):
     youtube_url: HttpUrl
     instagram_url: Optional[HttpUrl] = None
+    openai_api_key: Optional[str] = None
 
 
 class VideoSummary(BaseModel):
@@ -30,6 +31,7 @@ class IngestResponse(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str
     message: str
+    openai_api_key: Optional[str] = None
 
 
 class ChatChunk(BaseModel):

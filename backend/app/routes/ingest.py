@@ -23,9 +23,6 @@ router = APIRouter(prefix="/api/v1", tags=["ingest"])
 
 settings = get_settings()
 
-transcription_service = TranscriptionService()
-embedder = EmbeddingClient()
-
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_videos(
     req: IngestRequest,
@@ -33,6 +30,9 @@ async def ingest_videos(
     current_user: User = Depends(get_current_user)
 ):
     """Ingest a YouTube video (A) and an Instagram reel (B) for comparison."""
+    
+    transcription_service = TranscriptionService(api_key=req.openai_api_key)
+    embedder = EmbeddingClient(api_key=req.openai_api_key)
     
     # Check usage limits
     limit = 100 if current_user.tier == "free" else 1000

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ingestVideos } from '@/lib/api';
 
@@ -16,8 +16,24 @@ export default function UrlForm() {
   const router = useRouter();
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedKey = localStorage.getItem('openai_api_key');
+    if (savedKey) setOpenaiApiKey(savedKey);
+  }, []);
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setOpenaiApiKey(val);
+    if (val) {
+      localStorage.setItem('openai_api_key', val);
+    } else {
+      localStorage.removeItem('openai_api_key');
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -42,7 +58,7 @@ export default function UrlForm() {
     setLoading(true);
 
     try {
-      const response = await ingestVideos(youtubeUrl.trim(), instagramUrl.trim());
+      const response = await ingestVideos(youtubeUrl.trim(), instagramUrl.trim(), openaiApiKey.trim() || undefined);
       router.push(`/session/${response.session_id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to start analysis. Please try again.');
@@ -84,6 +100,27 @@ export default function UrlForm() {
             style={{ paddingLeft: 40 }}
           />
         </div>
+      </div>
+
+      <div className="form-divider" style={{ margin: '16px 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ADVANCED</div>
+
+      <div className="input-group" style={{ marginBottom: 24 }}>
+        <label className="input-label">OpenAI API Key (Optional)</label>
+        <div style={{ position: 'relative' }}>
+          <span className="url-input-icon">🔑</span>
+          <input
+            type="password"
+            className="input-field"
+            placeholder="sk-..."
+            value={openaiApiKey}
+            onChange={handleApiKeyChange}
+            disabled={loading}
+            style={{ paddingLeft: 40 }}
+          />
+        </div>
+        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+          Bypass server rate limits by providing your own key. Saved locally.
+        </p>
       </div>
 
       {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}

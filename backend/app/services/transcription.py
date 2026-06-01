@@ -13,9 +13,9 @@ logger = structlog.get_logger(__name__)
 class TranscriptionService:
     """Whisper API fallback when native transcripts aren't available."""
 
-    def __init__(self):
+    def __init__(self, api_key: str | None = None):
         settings = get_settings()
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.client = OpenAI(api_key=api_key or settings.openai_api_key)
 
     def transcribe_from_url(self, source_url: str) -> list[dict]:
         """Download audio via yt-dlp, send to Whisper API, return segments."""

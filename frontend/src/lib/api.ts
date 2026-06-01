@@ -19,7 +19,8 @@ async function getHeaders(customHeaders: Record<string, string> = {}): Promise<R
  */
 export async function ingestVideos(
   youtubeUrl: string,
-  instagramUrl: string
+  instagramUrl: string,
+  openaiApiKey?: string
 ): Promise<IngestResponse> {
   const headers = await getHeaders({ 'Content-Type': 'application/json' });
   const res = await fetch(`${API_BASE}/api/v1/ingest`, {
@@ -28,6 +29,7 @@ export async function ingestVideos(
     body: JSON.stringify({
       youtube_url: youtubeUrl,
       instagram_url: instagramUrl,
+      openai_api_key: openaiApiKey,
     }),
   });
 
@@ -51,6 +53,7 @@ export async function streamChat(
   onError: (error: string) => void
 ): Promise<void> {
   try {
+    const openaiApiKey = typeof window !== 'undefined' ? localStorage.getItem('openai_api_key') : null;
     const headers = await getHeaders({ 'Content-Type': 'application/json' });
     const res = await fetch(`${API_BASE}/api/v1/chat`, {
       method: 'POST',
@@ -58,6 +61,7 @@ export async function streamChat(
       body: JSON.stringify({
         session_id: sessionId,
         message,
+        openai_api_key: openaiApiKey || undefined,
       }),
     });
 
