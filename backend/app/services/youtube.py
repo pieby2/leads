@@ -81,6 +81,13 @@ class YouTubeService:
                                 "follower_count": None, # Requires another API call to channels
                                 "hashtags": snippet.get("tags", []),
                             }
+                    elif resp.status_code == 403:
+                        body = resp.json()
+                        err_msg = body.get("error", {}).get("message", "")
+                        if "YouTube Data API v3 has not been used in project" in err_msg:
+                            return {"platform": "youtube", "title": "ERROR: YouTube Data API v3 is not enabled in your Google Cloud Console. Please enable it in the APIs & Services > Library section.", "creator": None, "follower_count": None, "hashtags": []}
+                        if "insufficient" in err_msg.lower() or "scope" in err_msg.lower():
+                            return {"platform": "youtube", "title": "ERROR: You did not grant the YouTube permission. Please sign out and sign back in, ensuring you check the box to grant YouTube access.", "creator": None, "follower_count": None, "hashtags": []}
             except Exception as e:
                 logger.error("youtube official api fetch failed", url=url, error=str(e))
                 # Fall through to yt-dlp
