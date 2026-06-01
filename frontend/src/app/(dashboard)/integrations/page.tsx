@@ -26,7 +26,7 @@ export default async function IntegrationsPage() {
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#aaa' }}>Connect your YouTube account to analyze videos.</p>
           </div>
           <a 
-            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/youtube/login`} 
+            href={`${process.env.NEXT_PUBLIC_API_URL || 'https://vidcompare-backend.onrender.com'}/api/auth/youtube/login?token=${(session as any)?.accessToken}`} 
             style={{ padding: '0.5rem 1rem', background: '#ff0000', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontWeight: 'bold' }}
           >
             Connect YouTube
@@ -39,7 +39,7 @@ export default async function IntegrationsPage() {
             <p style={{ margin: 0, fontSize: '0.9rem', color: '#aaa' }}>Connect your Instagram account to analyze reels.</p>
           </div>
           <a 
-            href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/instagram/login`} 
+            href={`${process.env.NEXT_PUBLIC_API_URL || 'https://vidcompare-backend.onrender.com'}/api/auth/instagram/login?token=${(session as any)?.accessToken}`} 
             style={{ padding: '0.5rem 1rem', background: '#E1306C', color: '#fff', textDecoration: 'none', borderRadius: '4px', fontWeight: 'bold' }}
           >
             Connect Instagram

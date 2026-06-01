@@ -13,8 +13,27 @@ from app.core.auth import get_current_user
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["oauth"])
 
+from jose import JWTError, jwt
+from app.core.security import SECRET_KEY, ALGORITHM
+from sqlalchemy import select
+from fastapi.responses import RedirectResponse
+
+async def authenticate_from_token(token: str, db: AsyncSession) -> User | None:
+    if not token:
+        return None
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if not email:
+            return None
+        result = await db.execute(select(User).filter(User.email == email))
+        return result.scalars().first()
+    except Exception as e:
+        logger.error("jwt decode failed", error=str(e))
+        return None
+
 @router.get("/youtube/login")
-async def youtube_login():
+async def youtube_login(token: str = None):
     settings = get_settings()
     params = {
         "client_id": settings.youtube_client_id,
@@ -24,6 +43,8 @@ async def youtube_login():
         "access_type": "offline",
         "prompt": "consent",
     }
+    if token:
+        params["state"] = token
     url = f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(params)}"
     return RedirectResponse(url)
 
@@ -31,9 +52,13 @@ async def youtube_login():
 @router.get("/youtube/callback")
 async def youtube_callback(
     code: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    state: str = None,
+    db: AsyncSession = Depends(get_db)
 ):
+    current_user = await authenticate_from_token(state, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated (invalid state token)")
+
     settings = get_settings()
     token_url = "https://oauth2.googleapis.com/token"
     data = {
@@ -58,11 +83,12 @@ async def youtube_callback(
         db.add(current_user)
         await db.commit()
         
-    return {"status": "success", "message": "YouTube connected successfully"}
+    frontend_url = "https://vidcompare-frontend.onrender.com/integrations"
+    return RedirectResponse(frontend_url)
 
 
 @router.get("/instagram/login")
-async def instagram_login():
+async def instagram_login(token: str = None):
     settings = get_settings()
     params = {
         "client_id": settings.instagram_client_id,
@@ -70,6 +96,8 @@ async def instagram_login():
         "response_type": "code",
         "scope": "user_profile,user_media",
     }
+    if token:
+        params["state"] = token
     url = f"https://api.instagram.com/oauth/authorize?{urllib.parse.urlencode(params)}"
     return RedirectResponse(url)
 
@@ -77,9 +105,13 @@ async def instagram_login():
 @router.get("/instagram/callback")
 async def instagram_callback(
     code: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    state: str = None,
+    db: AsyncSession = Depends(get_db)
 ):
+    current_user = await authenticate_from_token(state, db)
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated (invalid state token)")
+
     settings = get_settings()
     token_url = "https://api.instagram.com/oauth/access_token"
     data = {
@@ -103,4 +135,5 @@ async def instagram_callback(
         db.add(current_user)
         await db.commit()
         
-    return {"status": "success", "message": "Instagram connected successfully"}
+    frontend_url = "https://vidcompare-frontend.onrender.com/integrations"
+    return RedirectResponse(frontend_url)
