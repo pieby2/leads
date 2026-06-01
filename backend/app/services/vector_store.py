@@ -20,7 +20,7 @@ class VectorStoreService:
         else:
             self.client = QdrantClient(host=host, port=port)
 
-    def ensure_collection(self, collection_name: str = "video_chunks", vector_size: int = 1536):
+    def ensure_collection(self, collection_name: str = "video_chunks_v2", vector_size: int = 1536):
         """Create collection if it doesn't exist."""
         collections = [c.name for c in self.client.get_collections().collections]
         if collection_name not in collections:
@@ -39,7 +39,7 @@ class VectorStoreService:
         chunks: list[dict],
         embeddings: list[list[float]],
         metadata: dict,
-        collection_name: str = "video_chunks",
+        collection_name: str = "video_chunks_v2",
     ):
         """Insert chunk vectors with metadata into Qdrant."""
         points = []
@@ -76,7 +76,7 @@ class VectorStoreService:
         video_id: str | None = None,
         hook_only: bool = False,
         top_k: int = 5,
-        collection_name: str = "video_chunks",
+        collection_name: str = "video_chunks_v2",
     ) -> list[dict]:
         """Search for relevant chunks, filtered by session and optionally video/hook."""
         must_filters = [
@@ -108,7 +108,7 @@ class VectorStoreService:
 
         return hits
 
-    def delete_session(self, session_id: str, collection_name: str = "video_chunks"):
+    def delete_session(self, session_id: str, collection_name: str = "video_chunks_v2"):
         """Remove all chunks belonging to a session."""
         self.client.delete(
             collection_name=collection_name,

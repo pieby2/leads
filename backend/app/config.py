@@ -32,11 +32,11 @@ class Settings(BaseSettings):
     # AI Provider Settings
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-flash"
-    embedding_model: str = "text-embedding-004"
+    embedding_model: str = "gemini-embedding-2"
 
-    # vector dimensions for text-embedding-004
-    embedding_dim: int = 768
-    qdrant_collection: str = "video_chunks"
+    # vector dimensions for gemini-embedding-2
+    embedding_dim: int = 3072
+    qdrant_collection: str = "video_chunks_v2"
 
     class Config:
         env_file = ".env"
