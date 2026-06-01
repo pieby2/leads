@@ -104,7 +104,7 @@ async def health():
 
 
 # mount route modules
-from app.routes import ingest, chat, session, auth, stripe, oauth  # noqa: E402
+from app.routes import ingest, chat, session, auth, stripe, oauth, media  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(oauth.router)
@@ -112,3 +112,4 @@ app.include_router(stripe.router)
 app.include_router(ingest.router)
 app.include_router(chat.router)
 app.include_router(session.router)
+app.include_router(media.router)

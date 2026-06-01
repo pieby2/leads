@@ -29,9 +29,17 @@ export default function VideoCard({ video, label }: VideoCardProps) {
         <div className="video-thumbnail-wrapper">
           {video.thumbnail_url ? (
             <img
-              src={video.thumbnail_url}
+              src={
+                video.platform === 'instagram' 
+                  ? `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/v1/media/proxy-image?url=${encodeURIComponent(video.thumbnail_url)}`
+                  : video.thumbnail_url
+              }
               alt={video.title || 'Video thumbnail'}
               className="video-thumbnail"
+              onError={(e) => {
+                // Fallback to avoid broken image icons if proxy fails
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
             />
           ) : (
             <div className="video-thumbnail-placeholder">🎬</div>
