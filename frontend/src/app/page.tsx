@@ -48,14 +48,7 @@ export default function LandingPage() {
             </p>
             <button 
               className="btn-secondary"
-              onClick={() => {
-                if (!session) {
-                  // Must use Google to get YouTube Data API access
-                  import('next-auth/react').then(({ signIn }) => signIn('google', { callbackUrl: '/compare/custom' }));
-                } else {
-                  router.push('/compare/custom');
-                }
-              }}
+              onClick={() => router.push('/compare/custom')}
               style={{ width: '100%' }}
             >
               {session ? 'Go to Custom Path →' : 'Connect YouTube & Start'}
@@ -71,13 +64,7 @@ export default function LandingPage() {
             </p>
             <button 
               className="btn-primary"
-              onClick={() => {
-                if (!session) {
-                  import('next-auth/react').then(({ signIn }) => signIn('google', { callbackUrl: '/pricing' }));
-                } else {
-                  router.push('/pricing');
-                }
-              }}
+              onClick={() => router.push('/pricing')}
               style={{ width: '100%' }}
             >
               {session ? 'View Pricing →' : 'Connect YouTube & Subscribe'}
