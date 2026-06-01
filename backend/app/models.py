@@ -4,7 +4,7 @@ from typing import Optional
 
 class IngestRequest(BaseModel):
     youtube_url: HttpUrl
-    instagram_url: HttpUrl
+    instagram_url: Optional[HttpUrl] = None
 
 
 class VideoSummary(BaseModel):

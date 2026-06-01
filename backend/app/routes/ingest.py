@@ -57,7 +57,7 @@ async def ingest_videos(
             id=session_id,
             user_id=current_user.id,
             youtube_url=str(req.youtube_url),
-            instagram_url=str(req.instagram_url),
+            instagram_url=str(req.instagram_url) if req.instagram_url else "",
             status="processing",
         )
         db.add(session)
@@ -65,11 +65,12 @@ async def ingest_videos(
 
         videos_response = {}
 
+        videos_to_process = [("A", str(req.youtube_url), "youtube")]
+        if req.instagram_url:
+            videos_to_process.append(("B", str(req.instagram_url), "instagram"))
+
         # process each video
-        for video_id, url, platform in [
-            ("A", str(req.youtube_url), "youtube"),
-            ("B", str(req.instagram_url), "instagram"),
-        ]:
+        for video_id, url, platform in videos_to_process:
             url_str = str(url)
 
             # check cache ?" if we already ingested this URL, reuse metadata

@@ -24,8 +24,8 @@ export default function UrlForm() {
     setError(null);
 
     // validation
-    if (!youtubeUrl.trim() || !instagramUrl.trim()) {
-      setError('Please enter both URLs');
+    if (!youtubeUrl.trim()) {
+      setError('Please enter a YouTube video URL');
       return;
     }
 
@@ -34,7 +34,7 @@ export default function UrlForm() {
       return;
     }
 
-    if (!isValidInstagramUrl(instagramUrl)) {
+    if (instagramUrl.trim() && !isValidInstagramUrl(instagramUrl)) {
       setError('Please enter a valid Instagram Reel URL');
       return;
     }
@@ -71,7 +71,7 @@ export default function UrlForm() {
       <div className="form-divider">vs</div>
 
       <div className="input-group">
-        <label className="input-label">Instagram Reel URL</label>
+        <label className="input-label">Instagram Reel URL (Optional)</label>
         <div style={{ position: 'relative' }}>
           <span className="url-input-icon">📷</span>
           <input

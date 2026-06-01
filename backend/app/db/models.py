@@ -52,7 +52,7 @@ class Session(Base):
     id = Column(String, primary_key=True)  # the session_id we generate
     user_id = Column(String, ForeignKey("users.id"), nullable=True)
     youtube_url = Column(String, nullable=False)
-    instagram_url = Column(String, nullable=False)
+    instagram_url = Column(String, nullable=True)
     status = Column(String, default="processing")
     created_at = Column(DateTime, default=datetime.utcnow)
 

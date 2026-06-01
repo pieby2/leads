@@ -101,7 +101,7 @@ export default function SessionPage() {
           <div className="workspace-layout animate-fade-in">
             <div className="videos-grid">
               <VideoCard video={session.videos.A} label="A" />
-              <VideoCard video={session.videos.B} label="B" />
+              {session.videos.B && <VideoCard video={session.videos.B} label="B" />}
             </div>
             <ChatPanel sessionId={sessionId} />
           </div>
