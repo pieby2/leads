@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     instagram_client_secret: str = ""
     oauth_redirect_uri: str = "http://localhost:8000/api/auth"
 
+    # Stripe & URLs
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_price_id: str = "price_dummy"
+    frontend_url: str = "https://vidcompare-frontend.onrender.com"
+
     residential_proxy: str | None = None
     apify_api_token: str | None = None
 

@@ -64,9 +64,22 @@ export default function PricingPage() {
             </ul>
             <button 
               className="btn-primary" 
-              onClick={() => {
-                alert('Stripe checkout would go here! Redirecting to app for now.');
-                router.push('/compare/hosted');
+              onClick={async (e) => {
+                try {
+                  const target = e.target as HTMLButtonElement;
+                  const originalText = target.innerText;
+                  target.innerText = 'Redirecting...';
+                  target.disabled = true;
+                  
+                  const { createCheckoutSession } = await import('@/lib/api');
+                  const { url } = await createCheckoutSession();
+                  window.location.href = url;
+                } catch (err: any) {
+                  alert(`Error: ${err.message}`);
+                  const target = e.target as HTMLButtonElement;
+                  target.innerText = 'Upgrade to Pro';
+                  target.disabled = false;
+                }
               }}
               style={{ width: '100%' }}
             >

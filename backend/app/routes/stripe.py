@@ -10,19 +10,18 @@ from app.core.auth import get_current_user
 from app.db.models import User, Subscription
 
 settings = get_settings()
-# stripe.api_key = settings.stripe_secret_key # You would add this in config
+stripe.api_key = settings.stripe_secret_key
 
 router = APIRouter(prefix="/api/v1/stripe", tags=["stripe"])
-
-# Replace with your actual frontend URL in production
-FRONTEND_URL = "http://localhost:3000"
-
 
 @router.post("/create-checkout-session")
 async def create_checkout_session(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured.")
+
     try:
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -30,14 +29,13 @@ async def create_checkout_session(
             client_reference_id=current_user.id,
             line_items=[
                 {
-                    # Provide the exact Price ID (e.g. pr_1234) of the product you want to sell
-                    'price': 'price_12345', 
+                    'price': settings.stripe_price_id, 
                     'quantity': 1,
                 },
             ],
             mode='subscription',
-            success_url=FRONTEND_URL + '/success?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=FRONTEND_URL + '/cancel',
+            success_url=settings.frontend_url + '/success?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=settings.frontend_url + '/cancel',
         )
         return {"url": checkout_session.url}
     except Exception as e:
@@ -48,15 +46,20 @@ async def create_checkout_session(
 async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
-    # endpoint_secret = settings.stripe_webhook_secret
+    endpoint_secret = settings.stripe_webhook_secret
+
+    if not sig_header or not endpoint_secret:
+        raise HTTPException(status_code=400, detail="Webhook not configured correctly")
 
     try:
-        import json
-        data = json.loads(payload)
-        event = stripe.Event.construct_from(data, stripe.api_key)
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
     except ValueError as e:
+        # Invalid payload
         raise HTTPException(status_code=400, detail="Invalid payload")
     except stripe.error.SignatureVerificationError as e:
+        # Invalid signature
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     # Handle the checkout.session.completed event

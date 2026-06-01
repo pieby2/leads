@@ -13,6 +13,21 @@ async function getHeaders(customHeaders: Record<string, string> = {}): Promise<R
   return headers;
 }
 
+export async function createCheckoutSession(): Promise<{ url: string }> {
+  const headers = await getHeaders();
+  const res = await fetch(`${API_BASE}/api/v1/stripe/create-checkout-session`, {
+    method: 'POST',
+    headers,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create checkout session');
+  }
+
+  return res.json();
+}
+
 /**
  * Kick off ingestion for two video URLs.
  * Returns session ID + initial video metadata.
