@@ -173,12 +173,25 @@ async def ingest_videos(
         return IngestResponse(session_id=session_id, videos=videos_response)
 
     except Exception as e:
-        logger.error("ingestion failed", error=str(e), session_id=session_id)
+        import tenacity
+        import openai
+        
+        err_msg = str(e)
+        if isinstance(e, tenacity.RetryError):
+            underlying = e.last_attempt.exception()
+            if isinstance(underlying, openai.RateLimitError):
+                err_msg = "OpenAI Rate Limit Exceeded: Your API key has run out of credits or hit its rate limit. Please check your billing dashboard."
+            else:
+                err_msg = f"Failed after retries: {str(underlying)}"
+        elif isinstance(e, openai.RateLimitError):
+            err_msg = "OpenAI Rate Limit Exceeded: Your API key has run out of credits or hit its rate limit. Please check your billing dashboard."
+
+        logger.error("ingestion failed", error=err_msg, session_id=session_id)
         return JSONResponse(
             status_code=500,
             content=ErrorResponse(
                 error_code="INGESTION_FAILED",
-                message=f"Failed to ingest videos: {str(e)}",
+                message=err_msg,
             ).model_dump(),
         )
 
