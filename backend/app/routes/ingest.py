@@ -35,7 +35,7 @@ async def ingest_videos(
     """Ingest a YouTube video (A) and an Instagram reel (B) for comparison."""
     
     # Check usage limits
-    limit = 3 if current_user.tier == "free" else 100
+    limit = 100 if current_user.tier == "free" else 1000
     if current_user.usage_this_month >= limit:
         return JSONResponse(
             status_code=403,
