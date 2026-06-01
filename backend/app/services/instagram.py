@@ -97,12 +97,22 @@ class InstagramService:
             caption = item.get("caption") or item.get("text") or ""
             hashtags = re.findall(r"#\w+", caption)
 
-            views = item.get("videoPlayCount") or item.get("playCount") or 0
-            likes = item.get("likesCount") or item.get("likes") or 0
-            comments = item.get("commentsCount") or item.get("comments") or 0
+            def safe_int(v):
+                if v is None or v == "": return 0
+                try: return int(float(v))
+                except (ValueError, TypeError): return 0
+
+            views = safe_int(item.get("videoPlayCount") or item.get("playCount"))
+            likes = safe_int(item.get("likesCount") or item.get("likes"))
+            comments = safe_int(item.get("commentsCount") or item.get("comments"))
 
             self._last_caption = caption
-            self._last_duration = item.get("videoDuration") or item.get("duration") or 0
+            
+            raw_duration = item.get("videoDuration") or item.get("duration") or 0.0
+            try:
+                self._last_duration = float(raw_duration)
+            except (ValueError, TypeError):
+                self._last_duration = 0.0
 
             return {
                 "platform": "instagram",
@@ -112,9 +122,9 @@ class InstagramService:
                 "likes": likes,
                 "comments": comments,
                 "duration_sec": self._last_duration,
-                "upload_date": (item.get("timestamp") or "")[:10],
+                "upload_date": str(item.get("timestamp") or "")[:10],
                 "thumbnail_url": item.get("displayUrl") or item.get("thumbnailUrl"),
-                "follower_count": follower_count,
+                "follower_count": safe_int(follower_count) if follower_count is not None else None,
                 "hashtags": hashtags,
             }
         except httpx.HTTPStatusError as e:
