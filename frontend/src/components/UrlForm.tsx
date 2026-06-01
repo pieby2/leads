@@ -122,7 +122,7 @@ export default function UrlForm({ mode = 'hosted' }: { mode?: 'custom' | 'hosted
               />
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              We don't store your key on our servers. It is securely saved locally in your browser.
+              We don&apos;t store your key on our servers. It is securely saved locally in your browser.
             </p>
           </div>
         </>
