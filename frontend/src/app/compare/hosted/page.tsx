@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import UrlForm from '@/components/UrlForm';
 
 export default function HostedComparePage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
@@ -16,7 +16,7 @@ export default function HostedComparePage() {
 
   if (!mounted) return null;
 
-  if (status === 'unauthenticated') {
+  if (status === 'unauthenticated' || (status === 'authenticated' && !(session as any)?.youtubeAccessToken)) {
     return (
       <div className="landing-page" style={{ minHeight: '100vh', paddingTop: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="feature-card glass-card" style={{ padding: '4rem 2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', maxWidth: '600px' }}>
