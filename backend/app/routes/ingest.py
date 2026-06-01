@@ -31,8 +31,8 @@ async def ingest_videos(
 ):
     """Ingest a YouTube video (A) and an Instagram reel (B) for comparison."""
     
-    transcription_service = TranscriptionService(api_key=req.openai_api_key)
-    embedder = EmbeddingClient(api_key=req.openai_api_key)
+    transcription_service = TranscriptionService(api_key=req.gemini_api_key)
+    embedder = EmbeddingClient(api_key=req.gemini_api_key)
     
     # Check usage limits
     limit = 100 if current_user.tier == "free" else 1000
@@ -174,17 +174,13 @@ async def ingest_videos(
 
     except Exception as e:
         import tenacity
-        import openai
         
         err_msg = str(e)
         if isinstance(e, tenacity.RetryError):
             underlying = e.last_attempt.exception()
-            if isinstance(underlying, openai.RateLimitError):
-                err_msg = "OpenAI Rate Limit Exceeded: Your API key has run out of credits or hit its rate limit. Please check your billing dashboard."
-            else:
-                err_msg = f"Failed after retries: {str(underlying)}"
-        elif isinstance(e, openai.RateLimitError):
-            err_msg = "OpenAI Rate Limit Exceeded: Your API key has run out of credits or hit its rate limit. Please check your billing dashboard."
+            err_msg = f"Failed after retries: {str(underlying)}"
+            if "429" in str(underlying):
+                err_msg = "Google Gemini Rate Limit Exceeded: Please check your billing dashboard or try again later."
 
         logger.error("ingestion failed", error=err_msg, session_id=session_id)
         return JSONResponse(

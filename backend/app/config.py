@@ -29,12 +29,13 @@ class Settings(BaseSettings):
     chunk_size: int = 250
     chunk_overlap: int = 30
 
-    gpt_model: str = "gpt-4o-mini"
-    gpt_mini_model: str = "gpt-4o-mini"
-    embedding_model: str = "text-embedding-3-small"
+    # AI Provider Settings
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
+    embedding_model: str = "text-embedding-004"
 
-    # vector dimensions for text-embedding-3-small
-    embedding_dim: int = 1536
+    # vector dimensions for text-embedding-004
+    embedding_dim: int = 768
     qdrant_collection: str = "video_chunks"
 
     class Config:

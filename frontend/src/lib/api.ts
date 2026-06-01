@@ -34,22 +34,24 @@ export async function createCheckoutSession(): Promise<{ url: string }> {
  */
 export async function ingestVideos(
   youtubeUrl: string,
-  instagramUrl: string,
-  openaiApiKey?: string
+  instagramUrl?: string,
+  geminiApiKey?: string
 ): Promise<IngestResponse> {
   const session = await getNextAuthSession();
   const youtubeAccessToken = (session as any)?.youtubeAccessToken;
 
   const headers = await getHeaders({ 'Content-Type': 'application/json' });
+  const payload: any = {
+    youtube_url: youtubeUrl,
+    youtube_access_token: youtubeAccessToken,
+  };
+  if (instagramUrl) payload.instagram_url = instagramUrl;
+  if (geminiApiKey) payload.gemini_api_key = geminiApiKey;
+
   const res = await fetch(`${API_BASE}/api/v1/ingest`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({
-      youtube_url: youtubeUrl,
-      instagram_url: instagramUrl,
-      openai_api_key: openaiApiKey,
-      youtube_access_token: youtubeAccessToken,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {

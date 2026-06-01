@@ -2,8 +2,10 @@ import os
 import tempfile
 
 import yt_dlp
-from openai import OpenAI
+from google import genai
+from google.genai import types
 import structlog
+import json
 
 from app.config import get_settings
 
@@ -11,15 +13,16 @@ logger = structlog.get_logger(__name__)
 
 
 class TranscriptionService:
-    """Whisper API fallback when native transcripts aren't available."""
+    """Gemini API fallback when native transcripts aren't available."""
 
     def __init__(self, api_key: str | None = None):
         settings = get_settings()
-        self.client = OpenAI(api_key=api_key or settings.openai_api_key)
+        self.client = genai.Client(api_key=api_key or settings.gemini_api_key)
 
     def transcribe_from_url(self, source_url: str) -> list[dict]:
-        """Download audio via yt-dlp, send to Whisper API, return segments."""
+        """Download audio via yt-dlp, send to Gemini API, return segments."""
         tmp_path = None
+        gemini_file = None
         try:
             # download audio to a temp file
             tmp_dir = tempfile.mkdtemp()
@@ -48,29 +51,28 @@ class TranscriptionService:
                     actual_file = os.path.join(tmp_dir, f)
                     break
 
-            logger.info("audio downloaded, sending to whisper", path=actual_file)
+            logger.info("audio downloaded, uploading to gemini", path=actual_file)
 
-            with open(actual_file, "rb") as audio_file:
-                result = self.client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    response_format="verbose_json",
-                    timestamp_granularities=["segment"],
+            gemini_file = self.client.files.upload(file=actual_file)
+            
+            prompt = "Transcribe the audio. Return the transcript as a JSON array of objects, where each object has 'text' (string), 'start' (float in seconds), and 'duration' (float in seconds)."
+            
+            result = self.client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=[gemini_file, prompt],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
                 )
+            )
 
-            segments = []
-            for seg in result.segments:
-                segments.append({
-                    "text": seg.text.strip(),
-                    "start": seg.start,
-                    "duration": seg.end - seg.start,
-                })
+            raw = result.text.strip()
+            segments = json.loads(raw)
 
-            logger.info("whisper transcription complete", segments=len(segments))
+            logger.info("gemini transcription complete", segments=len(segments))
             return segments
 
         except Exception as e:
-            logger.error("whisper transcription failed", error=str(e))
+            logger.error("gemini transcription failed", error=str(e))
             return []
 
         finally:

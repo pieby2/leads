@@ -16,22 +16,22 @@ export default function UrlForm({ mode = 'hosted' }: { mode?: 'custom' | 'hosted
   const router = useRouter();
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
-  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [geminiApiKey, setGeminiApiKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedKey = localStorage.getItem('openai_api_key');
-    if (savedKey) setOpenaiApiKey(savedKey);
+    const savedKey = localStorage.getItem('gemini_api_key');
+    if (savedKey) setGeminiApiKey(savedKey);
   }, []);
 
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setOpenaiApiKey(val);
+    setGeminiApiKey(val);
     if (val) {
-      localStorage.setItem('openai_api_key', val);
+      localStorage.setItem('gemini_api_key', val);
     } else {
-      localStorage.removeItem('openai_api_key');
+      localStorage.removeItem('gemini_api_key');
     }
   };
 
@@ -58,7 +58,7 @@ export default function UrlForm({ mode = 'hosted' }: { mode?: 'custom' | 'hosted
     setLoading(true);
 
     try {
-      const response = await ingestVideos(youtubeUrl.trim(), instagramUrl.trim(), openaiApiKey.trim() || undefined);
+      const response = await ingestVideos(youtubeUrl.trim(), instagramUrl.trim(), geminiApiKey.trim() || undefined);
       router.push(`/session/${response.session_id}`);
     } catch (err: any) {
       setError(err.message || 'Failed to start analysis. Please try again.');
@@ -107,14 +107,14 @@ export default function UrlForm({ mode = 'hosted' }: { mode?: 'custom' | 'hosted
           <div className="form-divider" style={{ margin: '16px 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ADVANCED</div>
 
           <div className="input-group" style={{ marginBottom: 24 }}>
-            <label className="input-label">OpenAI API Key (Required for this path)</label>
+            <label className="input-label">Google Gemini API Key (Required for this path)</label>
             <div style={{ position: 'relative' }}>
               <span className="url-input-icon">🔑</span>
               <input
                 type="password"
                 className="input-field"
-                placeholder="sk-..."
-                value={openaiApiKey}
+                placeholder="AIzaSy..."
+                value={geminiApiKey}
                 onChange={handleApiKeyChange}
                 disabled={loading}
                 required

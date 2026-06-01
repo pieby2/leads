@@ -21,7 +21,7 @@ export default function CustomComparePage() {
       <div className="container" style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
         <h1 className="hero-title" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Bring Your Own Key</h1>
         <p className="hero-subtitle" style={{ marginBottom: '3rem' }}>
-          Compare videos using your own OpenAI API key. No usage limits from our side.
+          Compare videos using your own Google Gemini API key. No usage limits from our side.
         </p>
 
         {status === 'unauthenticated' ? (

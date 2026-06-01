@@ -1,7 +1,8 @@
 import re
 from typing import AsyncGenerator
 
-from openai import OpenAI
+from google import genai
+from google.genai import types
 import structlog
 
 from app.config import get_settings
@@ -10,26 +11,28 @@ from app.rag.prompts import RAG_SYSTEM_PROMPT
 logger = structlog.get_logger(__name__)
 
 # regex to find citation patterns like [A:chunk_3] or [B:chunk_12]
+import re
 CITATION_PATTERN = re.compile(r'\[([AB]):chunk_(\d+)\]')
 
 
 def generate_answer(state: dict) -> dict:
-    """Build final prompt and call GPT-4o. Returns full response (non-streaming).
-    For streaming, use generate_answer_stream instead.
-    """
+    """Build final prompt and call Gemini. Returns full response (non-streaming)."""
     settings = get_settings()
-    client = OpenAI(api_key=state.get("openai_api_key") or settings.openai_api_key)
+    client = genai.Client(api_key=state.get("gemini_api_key") or settings.gemini_api_key)
 
-    messages = _build_messages(state)
+    system_instruction, contents = _build_messages(state)
 
-    resp = client.chat.completions.create(
-        model=settings.gpt_model,
-        messages=messages,
-        temperature=0.7,
-        max_tokens=1500,
+    resp = client.models.generate_content(
+        model=settings.gemini_model,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.7,
+            max_output_tokens=1500,
+        )
     )
 
-    answer = resp.choices[0].message.content
+    answer = resp.text
     citations = _extract_citations(answer)
 
     return {"response": answer, "citations": citations}
@@ -40,23 +43,24 @@ def generate_answer_stream(state: dict):
     Returns a generator of (token, is_done, citations) tuples.
     """
     settings = get_settings()
-    client = OpenAI(api_key=state.get("openai_api_key") or settings.openai_api_key)
+    client = genai.Client(api_key=state.get("gemini_api_key") or settings.gemini_api_key)
 
-    messages = _build_messages(state)
+    system_instruction, contents = _build_messages(state)
 
-    stream = client.chat.completions.create(
-        model=settings.gpt_model,
-        messages=messages,
-        temperature=0.7,
-        max_tokens=1500,
-        stream=True,
+    stream = client.models.generate_content_stream(
+        model=settings.gemini_model,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.7,
+            max_output_tokens=1500,
+        )
     )
 
     full_response = ""
     for chunk in stream:
-        delta = chunk.choices[0].delta
-        if delta.content:
-            token = delta.content
+        if chunk.text:
+            token = chunk.text
             full_response += token
             yield token, False, None
 
@@ -65,26 +69,24 @@ def generate_answer_stream(state: dict):
     yield "", True, citations
 
 
-def _build_messages(state: dict) -> list[dict]:
-    """Assemble the message list for the chat completion."""
-    messages = [{"role": "system", "content": RAG_SYSTEM_PROMPT}]
+def _build_messages(state: dict) -> tuple[str, list]:
+    """Assemble the system instruction and conversation history for Gemini."""
+    system_instruction = RAG_SYSTEM_PROMPT
 
-    # add analysis context as a system-ish message
+    # add analysis context to system prompt
     analysis = state.get("analysis_context", "")
     if analysis:
-        messages.append({
-            "role": "system",
-            "content": f"Here is the analysis context:\n\n{analysis}",
-        })
+        system_instruction += f"\n\nHere is the analysis context:\n{analysis}"
 
+    contents = []
     # replay chat history
     for msg in state.get("chat_history", []):
-        messages.append({"role": msg["role"], "content": msg["content"]})
+        contents.append({"role": msg["role"], "parts": [{"text": msg["content"]}]})
 
     # current user query
-    messages.append({"role": "user", "content": state["user_query"]})
+    contents.append({"role": "user", "parts": [{"text": state["user_query"]}]})
 
-    return messages
+    return system_instruction, contents
 
 
 def _extract_citations(text: str) -> list[dict]:

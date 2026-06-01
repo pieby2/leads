@@ -4,9 +4,9 @@ from typing import Optional
 
 class IngestRequest(BaseModel):
     youtube_url: HttpUrl
-    instagram_url: Optional[HttpUrl] = None
-    openai_api_key: Optional[str] = None
-    youtube_access_token: Optional[str] = None
+    instagram_url: HttpUrl | None = None
+    gemini_api_key: str | None = None
+    youtube_access_token: str | None = None
 
 
 class VideoSummary(BaseModel):

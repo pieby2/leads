@@ -1,6 +1,7 @@
 import json
 
-from openai import OpenAI
+from google import genai
+from google.genai import types
 import structlog
 
 from app.config import get_settings
@@ -10,13 +11,9 @@ logger = structlog.get_logger(__name__)
 
 
 def route_query(state: dict) -> dict:
-    """Classify the user query type and target videos using GPT-4o-mini.
-    
-    Using raw openai client here — langchain is overkill for a simple
-    classification call, and mini is way cheaper for routing.
-    """
+    """Classify the user query type and target videos using Gemini 1.5 Flash."""
     settings = get_settings()
-    client = OpenAI(api_key=state.get("openai_api_key") or settings.openai_api_key)
+    client = genai.Client(api_key=state.get("gemini_api_key") or settings.gemini_api_key)
 
     user_query = state["user_query"]
     videos = state.get("videos", {})
@@ -29,22 +26,18 @@ def route_query(state: dict) -> dict:
         video_context += f"Video {vid_id} ({platform}): {title}\n"
 
     try:
-        resp = client.chat.completions.create(
-            model=settings.gpt_mini_model,
-            messages=[
-                {"role": "system", "content": ROUTER_SYSTEM_PROMPT},
-                {"role": "user", "content": f"Videos:\n{video_context}\n\nQuery: {user_query}"},
-            ],
-            temperature=0,
-            max_tokens=100,
+        resp = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=[{"role": "user", "parts": [{"text": f"Videos:\n{video_context}\n\nQuery: {user_query}"}]}],
+            config=types.GenerateContentConfig(
+                system_instruction=ROUTER_SYSTEM_PROMPT,
+                temperature=0,
+                max_output_tokens=100,
+                response_mime_type="application/json",
+            )
         )
 
-        raw = resp.choices[0].message.content.strip()
-        # parse the JSON response
-        # strip markdown fences if the model wraps it
-        if raw.startswith("```"):
-            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-
+        raw = resp.text.strip()
         parsed = json.loads(raw)
         query_type = parsed.get("query_type", "GENERIC_RAG")
         target_videos = parsed.get("target_videos", ["A", "B"])
