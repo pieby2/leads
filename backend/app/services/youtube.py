@@ -102,7 +102,7 @@ class YouTubeService:
             }
         except Exception as e:
             logger.error("youtube metadata fetch fallback failed", url=url, error=str(e))
-            return {"platform": "youtube", "title": None, "creator": None, "follower_count": None, "hashtags": []}
+            return {"platform": "youtube", "title": f"Failed to load: {str(e)[:50]}", "creator": None, "follower_count": None, "hashtags": []}
 
     def fetch_transcript(self, url: str) -> list[dict]:
         """Try youtube-transcript-api first. Returns list of segments."""
