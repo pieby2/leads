@@ -1,86 +1,127 @@
+import asyncio
 import re
-
-import yt_dlp
+import httpx
 import structlog
+from app.config import get_settings
 
 logger = structlog.get_logger(__name__)
 
 
-# TODO: IG scraping is notoriously fragile — yt-dlp works for public reels
-# but may break with login walls or rate limits. Consider adding browser-based
-# fallback or accepting manual metadata input from the frontend.
-
-
-def _extract_hashtags(text: str) -> list[str]:
-    """Pull #hashtag tokens from a caption string."""
-    if not text:
-        return []
-    return re.findall(r"#(\w+)", text)
-
-
-from app.config import get_settings
-
-
 class InstagramService:
-    """Handles Instagram reel metadata and caption extraction."""
+    """Handles Instagram reel metadata and caption extraction using Apify."""
 
     def __init__(self, access_token: str | None = None):
-        settings = get_settings()
+        self.settings = get_settings()
+        self.apify_token = self.settings.apify_api_token
+        self.base_url = "https://api.apify.com/v2"
+        self.headers = {"Authorization": f"Bearer {self.apify_token}"} if self.apify_token else {}
         self.access_token = access_token
-        self._ydl_opts = {
-            "quiet": True,
-            "no_warnings": True,
-            "skip_download": True,
-        }
-        if settings.residential_proxy:
-            self._ydl_opts["proxy"] = settings.residential_proxy
+        self._last_caption = ""
+        self._last_duration = 0
+
+    async def _run_actor(self, actor_id: str, input_payload: dict, timeout: int = 120) -> list:
+        if not self.apify_token:
+            logger.warning("No APIFY_API_TOKEN set, cannot run actor")
+            return []
+
+        async with httpx.AsyncClient() as client:
+            start_resp = await client.post(
+                f"{self.base_url}/acts/{actor_id}/runs",
+                headers=self.headers,
+                json=input_payload,
+                timeout=30,
+            )
+            start_resp.raise_for_status()
+            run_id = start_resp.json()["data"]["id"]
+            logger.info("started apify actor", actor_id=actor_id, run_id=run_id)
+
+            deadline = asyncio.get_event_loop().time() + timeout
+            while asyncio.get_event_loop().time() < deadline:
+                await asyncio.sleep(3)
+                status_resp = await client.get(
+                    f"{self.base_url}/actor-runs/{run_id}",
+                    headers=self.headers,
+                    timeout=10,
+                )
+                status_resp.raise_for_status()
+                status = status_resp.json()["data"]["status"]
+                
+                if status == "SUCCEEDED":
+                    break
+                if status in ("FAILED", "ABORTED", "TIMED-OUT"):
+                    raise RuntimeError(f"Apify actor {actor_id} failed: {status}")
+
+            items_resp = await client.get(
+                f"{self.base_url}/actor-runs/{run_id}/dataset/items",
+                headers=self.headers,
+                params={"format": "json", "clean": "true"},
+                timeout=30,
+            )
+            items_resp.raise_for_status()
+            return items_resp.json()
+
+    async def _get_follower_count(self, username: str) -> int | None:
+        if not username:
+            return None
+        try:
+            items = await self._run_actor(
+                "apify~instagram-profile-scraper",
+                {"usernames": [username.lstrip("@")]},
+                timeout=60,
+            )
+            if items:
+                return items[0].get("followersCount")
+        except Exception as e:
+            logger.error("apify profile scrape failed", error=str(e))
+        return None
 
     async def fetch_metadata(self, url: str) -> dict:
-        """Try official API if authenticated, else fallback to yt-dlp."""
-        if self.access_token:
-            # Note: Graph API requires Media ID, which is tricky to extract purely from URL. 
-            # In a production app, you would use oEmbed or an edge endpoint to resolve the shortcode.
-            # Here we mock the official API fetch block.
-            try:
-                import httpx
-                # Shortcode extraction
-                match = re.search(r"/(?:reel|p)/([A-Za-z0-9_-]+)", str(url))
-                shortcode = match.group(1) if match else None
-                
-                if shortcode:
-                    # In reality, you'd use graph.instagram.com with a valid Media ID.
-                    pass
-            except Exception as e:
-                logger.error("instagram official api fetch failed", url=url, error=str(e))
-                # Fall through to yt-dlp
-
-        # Fallback to scraping
+        """Fetch metadata via Apify API."""
         try:
-            with yt_dlp.YoutubeDL(self._ydl_opts) as ydl:
-                info = ydl.extract_info(str(url), download=False)
+            items = await self._run_actor(
+                "apify~instagram-reel-scraper",
+                {
+                    "directUrls": [str(url)],
+                    "resultsLimit": 1,
+                },
+                timeout=120,
+            )
 
-            d = info.get("upload_date") or ""
-            upload_date = f"{d[:4]}-{d[4:6]}-{d[6:8]}" if len(d) == 8 else d
+            if not items:
+                raise ValueError(f"Apify returned no data for URL: {url}")
+
+            item = items[0]
+            username = item.get("ownerUsername") or item.get("username")
+            follower_count = await self._get_follower_count(username)
+
+            caption = item.get("caption") or item.get("text") or ""
+            hashtags = re.findall(r"#\w+", caption)
+
+            views = item.get("videoPlayCount") or item.get("playCount") or 0
+            likes = item.get("likesCount") or item.get("likes") or 0
+            comments = item.get("commentsCount") or item.get("comments") or 0
+
+            self._last_caption = caption
+            self._last_duration = item.get("videoDuration") or item.get("duration") or 0
 
             return {
-                "title": info.get("title") or info.get("description", "")[:100],
-                "creator": info.get("uploader") or info.get("channel"),
-                "views": info.get("view_count"),
-                "likes": info.get("like_count"),
-                "comments": info.get("comment_count"),
-                "duration_sec": info.get("duration"),
-                "upload_date": upload_date,
-                "thumbnail_url": info.get("thumbnail"),
                 "platform": "instagram",
-                "follower_count": info.get("channel_follower_count"),
-                "hashtags": _extract_hashtags(info.get("description", "")),
+                "title": caption[:100].strip() if caption else "Instagram Reel",
+                "creator": username,
+                "views": views,
+                "likes": likes,
+                "comments": comments,
+                "duration_sec": self._last_duration,
+                "upload_date": (item.get("timestamp") or "")[:10],
+                "thumbnail_url": item.get("displayUrl") or item.get("thumbnailUrl"),
+                "follower_count": follower_count,
+                "hashtags": hashtags,
             }
         except Exception as e:
-            logger.warning("ig metadata fetch fallback failed", url=url, error=str(e))
-            # return a shell so ingestion doesn't fully break
+            logger.error("ig metadata fetch failed", url=url, error=str(e))
             return {
                 "platform": "instagram",
-                "title": None,
+                "title": f"Failed: {str(e)[:50]}",
                 "creator": None,
                 "views": None,
                 "likes": None,
@@ -94,32 +135,15 @@ class InstagramService:
 
     def fetch_transcript(self, url: str) -> list[dict]:
         """
-        IG reels rarely have proper captions/subtitles.
-        We try to grab the post caption and return it as a single segment.
-        If there's audio, the caller should use the Whisper fallback.
+        Return the caption we just extracted from the metadata fetch.
         """
-        try:
-            with yt_dlp.YoutubeDL(self._ydl_opts) as ydl:
-                info = ydl.extract_info(str(url), download=False)
+        if self._last_caption.strip():
+            logger.info("using ig caption as transcript", length=len(self._last_caption))
+            return [{"text": self._last_caption, "start": 0.0, "duration": self._last_duration}]
 
-            caption = info.get("description") or ""
-            if caption.strip():
-                logger.info("using ig caption as transcript", length=len(caption))
-                return [{"text": caption, "start": 0.0, "duration": info.get("duration", 0)}]
-
-            # no caption text — caller should try whisper
-            logger.info("no ig caption found, whisper fallback recommended", url=url)
-            return []
-        except Exception as e:
-            logger.warning("ig transcript extraction failed", error=str(e))
-            return []
+        logger.info("no ig caption found")
+        return []
 
     def get_audio_url(self, url: str) -> str | None:
-        """Get direct audio URL for whisper fallback."""
-        try:
-            opts = {**self._ydl_opts, "format": "bestaudio/best"}
-            with yt_dlp.YoutubeDL(opts) as ydl:
-                info = ydl.extract_info(str(url), download=False)
-                return info.get("url")
-        except Exception:
-            return None
+        """Apify doesn't easily return a direct audio URL, and we don't use yt-dlp anymore."""
+        return None

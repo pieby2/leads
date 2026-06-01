@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     oauth_redirect_uri: str = "http://localhost:8000/api/auth"
 
     residential_proxy: str | None = None
+    apify_api_token: str | None = None
 
     chunk_size: int = 250
     chunk_overlap: int = 30
