@@ -117,6 +117,22 @@ class InstagramService:
                 "follower_count": follower_count,
                 "hashtags": hashtags,
             }
+        except httpx.HTTPStatusError as e:
+            err_text = e.response.text
+            logger.error("apify http error", url=url, status=e.response.status_code, body=err_text)
+            return {
+                "platform": "instagram",
+                "title": f"Apify 400: {err_text[:100]}",
+                "creator": None,
+                "views": None,
+                "likes": None,
+                "comments": None,
+                "duration_sec": None,
+                "upload_date": None,
+                "thumbnail_url": None,
+                "follower_count": None,
+                "hashtags": [],
+            }
         except Exception as e:
             logger.error("ig metadata fetch failed", url=url, error=str(e))
             return {
