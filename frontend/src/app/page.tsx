@@ -33,22 +33,57 @@ export default function LandingPage() {
           <span className="hero-title-gradient">Compare. Analyze. Grow.</span>
         </h1>
 
-        <p className="hero-subtitle">
+        <p className="hero-subtitle" style={{ maxWidth: '600px', margin: '0 auto 2rem' }}>
           Drop a YouTube video and an Instagram Reel — our AI analyzes engagement,
           hooks, and content strategy so you can understand what works and why.
         </p>
 
-        {status === 'authenticated' ? (
-          <div className="url-form-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            <UrlForm />
-            <button className="btn-secondary" onClick={() => router.push('/dashboard')}>Go to Dashboard</button>
+        <div className="gateway-cards" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+          {/* Path A */}
+          <div className="feature-card glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem' }}>
+            <div className="feature-icon feature-icon-purple" style={{ marginBottom: '1rem' }}>🔑</div>
+            <h3 style={{ marginBottom: '0.5rem' }}>Bring Your Own Key</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', flexGrow: 1 }}>
+              Use your own OpenAI API key. Completely free, no usage limits.
+            </p>
+            <button 
+              className="btn-secondary"
+              onClick={() => {
+                if (!session) {
+                  // Must use Google to get YouTube Data API access
+                  import('next-auth/react').then(({ signIn }) => signIn('google', { callbackUrl: '/compare/custom' }));
+                } else {
+                  router.push('/compare/custom');
+                }
+              }}
+              style={{ width: '100%' }}
+            >
+              {session ? 'Go to Custom Path →' : 'Connect YouTube & Start'}
+            </button>
           </div>
-        ) : (
-          <div className="auth-buttons" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
-            <button className="btn-primary" onClick={() => router.push('/api/auth/signin')}>Log In</button>
-            <button className="btn-secondary" onClick={() => router.push('/signup')}>Sign Up</button>
+
+          {/* Path B */}
+          <div className="feature-card glass-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem', border: '1px solid var(--primary-accent)' }}>
+            <div className="feature-icon feature-icon-blue" style={{ marginBottom: '1rem' }}>⚡</div>
+            <h3 style={{ marginBottom: '0.5rem' }}>Compare Video AI</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', flexGrow: 1 }}>
+              Fully managed hosted AI. Monthly subscription with high usage limits.
+            </p>
+            <button 
+              className="btn-primary"
+              onClick={() => {
+                if (!session) {
+                  import('next-auth/react').then(({ signIn }) => signIn('google', { callbackUrl: '/pricing' }));
+                } else {
+                  router.push('/pricing');
+                }
+              }}
+              style={{ width: '100%' }}
+            >
+              {session ? 'View Pricing →' : 'Connect YouTube & Subscribe'}
+            </button>
           </div>
-        )}
+        </div>
       </section>
 
       {/* Features */}

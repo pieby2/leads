@@ -12,7 +12,7 @@ function isValidInstagramUrl(url: string): boolean {
   return /^https?:\/\/(www\.)?instagram\.com\/(reel|p)\/.+/i.test(url);
 }
 
-export default function UrlForm() {
+export default function UrlForm({ mode = 'hosted' }: { mode?: 'custom' | 'hosted' }) {
   const router = useRouter();
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [instagramUrl, setInstagramUrl] = useState('');
@@ -102,26 +102,31 @@ export default function UrlForm() {
         </div>
       </div>
 
-      <div className="form-divider" style={{ margin: '16px 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ADVANCED</div>
+      {mode === 'custom' && (
+        <>
+          <div className="form-divider" style={{ margin: '16px 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ADVANCED</div>
 
-      <div className="input-group" style={{ marginBottom: 24 }}>
-        <label className="input-label">OpenAI API Key (Optional)</label>
-        <div style={{ position: 'relative' }}>
-          <span className="url-input-icon">🔑</span>
-          <input
-            type="password"
-            className="input-field"
-            placeholder="sk-..."
-            value={openaiApiKey}
-            onChange={handleApiKeyChange}
-            disabled={loading}
-            style={{ paddingLeft: 40 }}
-          />
-        </div>
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-          Bypass server rate limits by providing your own key. Saved locally.
-        </p>
-      </div>
+          <div className="input-group" style={{ marginBottom: 24 }}>
+            <label className="input-label">OpenAI API Key (Required for this path)</label>
+            <div style={{ position: 'relative' }}>
+              <span className="url-input-icon">🔑</span>
+              <input
+                type="password"
+                className="input-field"
+                placeholder="sk-..."
+                value={openaiApiKey}
+                onChange={handleApiKeyChange}
+                disabled={loading}
+                required
+                style={{ paddingLeft: 40 }}
+              />
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              We don't store your key on our servers. It is securely saved locally in your browser.
+            </p>
+          </div>
+        </>
+      )}
 
       {error && <p className="error-text" style={{ marginBottom: 12 }}>{error}</p>}
 

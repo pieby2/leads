@@ -6,6 +6,7 @@ class IngestRequest(BaseModel):
     youtube_url: HttpUrl
     instagram_url: Optional[HttpUrl] = None
     openai_api_key: Optional[str] = None
+    youtube_access_token: Optional[str] = None
 
 
 class VideoSummary(BaseModel):

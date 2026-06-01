@@ -22,6 +22,9 @@ export async function ingestVideos(
   instagramUrl: string,
   openaiApiKey?: string
 ): Promise<IngestResponse> {
+  const session = await getNextAuthSession();
+  const youtubeAccessToken = (session as any)?.youtubeAccessToken;
+
   const headers = await getHeaders({ 'Content-Type': 'application/json' });
   const res = await fetch(`${API_BASE}/api/v1/ingest`, {
     method: 'POST',
@@ -30,6 +33,7 @@ export async function ingestVideos(
       youtube_url: youtubeUrl,
       instagram_url: instagramUrl,
       openai_api_key: openaiApiKey,
+      youtube_access_token: youtubeAccessToken,
     }),
   });
 

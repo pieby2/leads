@@ -80,8 +80,12 @@ async def ingest_videos(
                 meta = _video_to_meta(cached)
                 transcript = cached.transcript_json or []
             else:
-                yt_service = YouTubeService(current_user.youtube_access_token)
-                ig_service = InstagramService(current_user.instagram_access_token)
+                # instantiate services with the user's tokens if available, or from request
+                yt_token = req.youtube_access_token or current_user.youtube_access_token
+                yt_service = YouTubeService(access_token=yt_token)
+                
+                ig_token = current_user.instagram_access_token
+                ig_service = InstagramService(access_token=ig_token)
                 
                 # fetch fresh metadata + transcript
                 if platform == "youtube":

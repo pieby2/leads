@@ -35,6 +35,9 @@ class Token(BaseModel):
     token_type: str
 
 
+class GoogleUser(BaseModel):
+    email: str
+
 @router.post("/register", response_model=UserResponse)
 async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).filter(User.email == user.email))
@@ -48,6 +51,29 @@ async def register(user: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(new_user)
     return new_user
+
+
+@router.post("/google", response_model=Token)
+async def google_auth(user: GoogleUser, db: AsyncSession = Depends(get_db)):
+    """Called by NextAuth when a user signs in with Google."""
+    result = await db.execute(select(User).filter(User.email == user.email))
+    db_user = result.scalars().first()
+    
+    # auto-register if they don't exist
+    if not db_user:
+        # they use Google, so we set a dummy unguessable password
+        import secrets
+        hashed_password = get_password_hash(secrets.token_urlsafe(32))
+        db_user = User(email=user.email, hashed_password=hashed_password)
+        db.add(db_user)
+        await db.commit()
+        await db.refresh(db_user)
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": db_user.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/token", response_model=Token)

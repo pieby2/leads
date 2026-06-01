@@ -1,10 +1,20 @@
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider from 'next-auth/providers/google';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://vidcompare-backend.onrender.com';
 
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+      authorization: {
+        params: {
+          scope: 'openid email profile https://www.googleapis.com/auth/youtube.readonly'
+        }
+      }
+    }),
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
@@ -30,7 +40,6 @@ export const authOptions: NextAuthOptions = {
           }
 
           const user = await res.json();
-          // Assuming user contains access_token, we can return it inside the user object
           if (user && user.access_token) {
             return {
               id: user.user?.id || user.id || '1',
@@ -47,19 +56,37 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+      // If logging in with Google, swap it for a FastAPI token
+      if (account && account.provider === 'google' && user?.email) {
+        try {
+          const res = await fetch(`${API_BASE}/api/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: user.email }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            token.accessToken = data.access_token;
+            token.youtubeAccessToken = account.access_token; // Store Google token for YouTube Data API
+          }
+        } catch (e) {
+          console.error('Google backend auth error', e);
+        }
+      } else if (user) {
+        // Standard credentials login
         token.accessToken = (user as any).accessToken;
       }
       return token;
     },
     async session({ session, token }) {
       (session as any).accessToken = token.accessToken;
+      (session as any).youtubeAccessToken = token.youtubeAccessToken;
       return session;
     }
   },
   pages: {
-    // We can define custom login page here or use default
+    signIn: '/login',
   },
   session: {
     strategy: 'jwt'
