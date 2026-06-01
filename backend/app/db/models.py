@@ -22,7 +22,7 @@ class User(Base):
     tier = Column(String, default="free")
     stripe_customer_id = Column(String, nullable=True)
     usage_this_month = Column(Integer, default=0)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     youtube_access_token = Column(String, nullable=True)
     youtube_refresh_token = Column(String, nullable=True)
@@ -54,7 +54,7 @@ class Session(Base):
     youtube_url = Column(String, nullable=False)
     instagram_url = Column(String, nullable=False)
     status = Column(String, default="processing")
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="sessions")
 
@@ -82,7 +82,7 @@ class Video(Base):
     hashtags = Column(JSON, nullable=True)
 
     transcript_json = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="videos")
 
