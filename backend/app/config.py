@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     instagram_client_secret: str = ""
     oauth_redirect_uri: str = "http://localhost:8000/api/auth"
 
+    residential_proxy: str | None = None
+
     chunk_size: int = 250
     chunk_overlap: int = 30
 

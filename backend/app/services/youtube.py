@@ -8,16 +8,22 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
+from app.config import get_settings
+
+
 class YouTubeService:
     """Handles YouTube metadata and transcript fetching."""
 
     def __init__(self, access_token: str | None = None):
+        settings = get_settings()
         self.access_token = access_token
         self._ydl_opts = {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
         }
+        if settings.residential_proxy:
+            self._ydl_opts["proxy"] = settings.residential_proxy
 
     def extract_video_id(self, url: str) -> str:
         """Pull video ID from various YouTube URL formats."""

@@ -9,7 +9,7 @@ import structlog
 from app.config import get_settings
 from app.database import get_db
 from app.db.models import Session, Video, User
-from app.models import IngestRequest, IngestResponse, VideoSummary, ErrorResponse, ManualIngestRequest
+from app.models import IngestRequest, IngestResponse, VideoSummary, ErrorResponse
 from app.services.youtube import YouTubeService
 from app.services.instagram import InstagramService
 from app.services.transcription import TranscriptionService
@@ -25,81 +25,6 @@ settings = get_settings()
 
 transcription_service = TranscriptionService()
 embedder = EmbeddingClient()
-
-@router.post("/ingest/manual")
-async def ingest_manual(
-    payload: ManualIngestRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Accept pre-scraped video metadata from local scraper script.
-    Saves to DB + embeds chunks into Qdrant.
-    Cache hit on source_url means live demo never calls yt-dlp.
-    """
-    # Check if already cached
-    existing = await _check_cache(db, payload.source_url)
-    if existing:
-        return {"status": "already_cached", "video_db_id": str(existing.id)}
-
-    # Compute engagement rate server-side
-    engagement_rate = None
-    if payload.views and payload.views > 0:
-        engagement_rate = round(
-            ((payload.likes or 0) + (payload.comments or 0)) / payload.views * 100, 4
-        )
-
-    transcript = [s.model_dump() for s in payload.transcript_segments] if payload.transcript_segments else []
-
-    # Save to DB
-    video = Video(
-        source_url=payload.source_url,
-        platform=payload.platform,
-        video_id=payload.video_id,
-        title=payload.title,
-        creator_name=payload.creator,
-        follower_count=payload.follower_count,
-        views=payload.views,
-        likes=payload.likes,
-        comments_count=payload.comments,
-        duration_sec=payload.duration_sec,
-        upload_date=payload.upload_date,
-        thumbnail_url=payload.thumbnail_url,
-        hashtags=payload.hashtags,
-        engagement_rate=engagement_rate,
-        session_id="manual",
-        transcript_json=transcript
-    )
-    db.add(video)
-    await db.flush()
-
-    chunks_stored = 0
-    # Chunk + embed + store in Qdrant
-    if transcript:
-        chunks = chunk_transcript(
-            transcript,
-            chunk_size=settings.chunk_size,
-            overlap_tokens=settings.chunk_overlap,
-        )
-        if chunks:
-            texts = [c["text"] for c in chunks]
-            embeddings = embedder.embed_texts(texts)
-            VectorStoreService(settings.qdrant_host, settings.qdrant_port).upsert_chunks(
-                session_id="manual",
-                video_id=payload.video_id,
-                chunks=chunks,
-                embeddings=embeddings,
-                metadata={"platform": payload.platform, "source_url": payload.source_url},
-            )
-            chunks_stored = len(chunks)
-
-    await db.commit()
-
-    return {
-        "status": "ingested",
-        "video_db_id": str(video.id),
-        "engagement_rate": engagement_rate,
-        "chunks_stored": chunks_stored,
-    }
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_videos(

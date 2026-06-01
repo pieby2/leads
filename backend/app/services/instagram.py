@@ -18,16 +18,22 @@ def _extract_hashtags(text: str) -> list[str]:
     return re.findall(r"#(\w+)", text)
 
 
+from app.config import get_settings
+
+
 class InstagramService:
     """Handles Instagram reel metadata and caption extraction."""
 
     def __init__(self, access_token: str | None = None):
+        settings = get_settings()
         self.access_token = access_token
         self._ydl_opts = {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
         }
+        if settings.residential_proxy:
+            self._ydl_opts["proxy"] = settings.residential_proxy
 
     async def fetch_metadata(self, url: str) -> dict:
         """Try official API if authenticated, else fallback to yt-dlp."""
