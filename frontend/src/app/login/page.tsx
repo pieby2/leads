@@ -85,7 +85,7 @@ export default function LoginPage() {
         </form>
 
         <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Don't have an account?{' '}
+          Don&apos;t have an account?{' '}
           <button 
             onClick={() => router.push('/signup')} 
             style={{ color: 'var(--accent-purple)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
