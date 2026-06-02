@@ -107,7 +107,10 @@ export default function UrlForm({ mode = 'hosted' }: { mode?: 'custom' | 'hosted
           <div className="form-divider" style={{ margin: '16px 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>ADVANCED</div>
 
           <div className="input-group" style={{ marginBottom: 24 }}>
-            <label className="input-label">Google Gemini API Key (Required for this path)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label className="input-label" style={{ marginBottom: 0 }}>Google Gemini API Key (Required for this path)</label>
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-purple)', fontSize: '0.75rem', textDecoration: 'underline' }}>Get your key here</a>
+            </div>
             <div style={{ position: 'relative' }}>
               <span className="url-input-icon">🔑</span>
               <input
