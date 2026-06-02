@@ -37,6 +37,18 @@ async def lifespan(app: FastAPI):
     # create db tables
     await create_tables()
 
+    # auto-migrate: add is_cached column if it doesn't exist (for PostgreSQL users)
+    from sqlalchemy import text
+    from app.database import engine
+    try:
+        async with engine.begin() as conn:
+            # PostgreSQL supports ADD COLUMN IF NOT EXISTS
+            # SQLite does not, so we catch errors
+            await conn.execute(text("ALTER TABLE videos ADD COLUMN IF NOT EXISTS is_cached BOOLEAN DEFAULT FALSE;"))
+            logger.info("Auto-migrated database schema")
+    except Exception as e:
+        logger.warning(f"Skipped auto-migration (expected if using SQLite): {e}")
+
     # ensure qdrant collection exists
     vs = VectorStoreService(settings.qdrant_host, settings.qdrant_port)
     vs.ensure_collection(settings.qdrant_collection, settings.embedding_dim)
