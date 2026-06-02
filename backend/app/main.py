@@ -63,15 +63,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — lock down to frontend URL
+# CORS — allow all for demo purposes
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://vidcompare-frontend.onrender.com"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
