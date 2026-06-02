@@ -6,7 +6,7 @@ import tenacity
 from datetime import datetime
 
 from app.config import get_settings
-from app.database import async_session_maker
+from app.database import async_session_factory
 from app.db.models import Session, Video, User
 from app.services.youtube import YouTubeService
 from app.services.instagram import InstagramService
@@ -33,7 +33,7 @@ async def async_process_ingestion(session_id: str, user_id: str, req_data: dict,
     embedder = EmbeddingClient(api_key=api_key)
 
     try:
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             result = await db.execute(select(Session).where(Session.id == session_id))
             session = result.scalar_one_or_none()
             if not session:
@@ -162,7 +162,7 @@ async def async_process_ingestion(session_id: str, user_id: str, req_data: dict,
 
         logger.error("ingestion failed", error=err_msg, session_id=session_id)
         
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             result = await db.execute(select(Session).where(Session.id == session_id))
             session = result.scalar_one_or_none()
             if session:
