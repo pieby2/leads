@@ -26,31 +26,31 @@ graph LR
     UI["Next.js Frontend"] -->|REST + SSE| API["FastAPI Backend"]
     
     API -->|Metadata| YT["YouTube<br/>(yt-dlp)"]
-    API -->|Metadata| IG["Instagram<br/>(yt-dlp)"]
+    API -->|Metadata| IG["Instagram<br/>(Apify)"]
     API -->|Transcripts| YTAPI["youtube-transcript-api"]
-    API -->|Fallback| Whisper["OpenAI Whisper API"]
+    API -->|Fallback| GeminiAudio["Gemini 1.5 Flash (Audio)"]
     
-    API -->|Embed| OAI["OpenAI Embeddings"]
+    API -->|Embed| GEM_EMB["Gemini Embeddings"]
     API -->|Store chunks| Qdrant["Qdrant Vector DB"]
     API -->|Store metadata| PG["PostgreSQL"]
     
     API -->|RAG| LG["LangGraph"]
     LG -->|Retrieve| Qdrant
-    LG -->|Generate| GPT["GPT-4o"]
+    LG -->|Generate| GEMINI["Gemini 2.5 Flash"]
 ```
 
 ### RAG Pipeline (LangGraph)
 
 ```mermaid
 graph TD
-    Q["User Question"] --> R["Route Query<br/>(GPT-4o-mini)"]
+    Q["User Question"] --> R["Route Query<br/>(Gemini 2.5 Flash)"]
     R -->|ENGAGEMENT| D1["DB Lookup Only"]
     R -->|HOOK| D2["Vector Search<br/>(hook_segment=true)"]
     R -->|GENERIC| D3["Dual Vector Search<br/>(A + B, top_k=5)"]
     D1 --> A["Build Analysis Context"]
     D2 --> A
     D3 --> A
-    A --> G["Generate Answer<br/>(GPT-4o, streaming)"]
+    A --> G["Generate Answer<br/>(Gemini 2.5 Flash, streaming)"]
     G --> Resp["Streamed Response<br/>with Citations"]
 ```
 
@@ -63,9 +63,9 @@ graph TD
 | Orchestration | LangGraph | Stateful graph with conditional routing + memory |
 | Vector DB | Qdrant | Fast filtered search, self-hosted, free |
 | Database | PostgreSQL | Reliable metadata store, handles concurrency |
-| LLM | GPT-4o (answers), GPT-4o-mini (routing) | Quality where it matters, cheap where it doesn't |
-| Embeddings | text-embedding-3-small | Best cost/quality ratio at $0.02/1M tokens |
-| Transcription | youtube-transcript-api + OpenAI Whisper API | Free first, paid fallback |
+| LLM | Gemini 2.5 Flash (answers + routing) | Fast, cheap, and very high quality with massive context window |
+| Embeddings | gemini-embedding-2 | Best cost/quality ratio for Google's newest embedding model |
+| Transcription | youtube-transcript-api + Gemini 1.5 Flash Audio | Free text first, multimodal fallback for audio transcription |
 
 ## Quick Start
 
@@ -74,7 +74,8 @@ graph TD
 - Python 3.11+
 - Node.js 20+
 - Docker & Docker Compose
-- OpenAI API key
+- Google Gemini API key
+- Apify API token (for Instagram scraping)
 
 ### 1. Clone and configure
 
@@ -84,7 +85,7 @@ cd vidcompare
 
 # Set up environment
 cp .env.example backend/.env
-# Edit backend/.env and add your OPENAI_API_KEY
+# Edit backend/.env and add your GEMINI_API_KEY and APIFY_API_TOKEN
 ```
 
 ### 2. Start infrastructure
@@ -173,8 +174,8 @@ docker compose up --build
 
 ## Key Design Decisions & Trade-offs
 
-### Why GPT-4o-mini for routing?
-Query classification is a simple task. Using mini saves ~10x on routing calls ($0.15/1M vs $2.50/1M tokens) with no quality loss for enum classification.
+### Why Gemini 2.5 Flash for both routing and answers?
+Gemini 2.5 Flash is extremely fast and cost-effective, while providing state-of-the-art quality. It simplifies the architecture to use a single highly capable model for both simple routing tasks and complex reasoning.
 
 ### Why Qdrant over Pinecone/Chroma?
 - **vs Pinecone**: Self-hosted = no per-query costs at scale. At 1M+ queries/day, Pinecone bills add up fast.
@@ -183,8 +184,11 @@ Query classification is a simple task. Using mini saves ~10x on routing calls ($
 ### Why SSE over WebSockets for chat?
 Chat is request-response with streaming — SSE is simpler (no connection management, automatic reconnection, works through proxies). WebSockets add complexity we don't need.
 
-### Why not local Whisper?
-GPU hosting costs don't scale. OpenAI Whisper API at $0.006/min is cheaper than maintaining GPU instances until you're processing 10K+ hours/month. The abstraction layer makes swapping trivial later.
+### Why Apify instead of native scraping for Instagram?
+Native Instagram scraping is fragile and prone to IP blocks and login walls. Using managed Apify actors (instagram-reel-scraper and instagram-profile-scraper) ensures reliability without the headache of fighting Meta's anti-scraping measures.
+
+### Why Gemini for transcription instead of local Whisper?
+GPU hosting costs don't scale. Using Gemini 1.5 Flash's multimodal capabilities for audio transcription is fast, accurate, and cheaper than maintaining GPU instances until you're processing massive volume.
 
 ### Caching strategy
 Same video URL = same transcript + embeddings. If a viral video gets submitted by 10K users, we ingest once. This is the single biggest cost saver at scale.
@@ -195,10 +199,10 @@ Same video URL = same transcript + embeddings. If a viral video gets submitted b
 
 | Component | Usage | Monthly Cost |
 |-----------|-------|-------------|
-| Embeddings | ~20K chunks/day × 200 tokens | ~$2.40 |
-| GPT-4o (answers) | 10K turns × ~800 tokens | ~$24 |
-| GPT-4o-mini (routing) | 10K calls × ~200 tokens | ~$0.30 |
-| Whisper API | ~200 videos needing fallback × 3 min avg | ~$10.80 |
+| Embeddings | ~20K chunks/day × 200 tokens | ~$0.08 |
+| Gemini 2.5 Flash | 10K turns × ~800 tokens + routing | ~$0.60 |
+| Apify | ~1,000 Reels/day | ~$5.00 |
+| Gemini Audio | ~200 videos needing fallback × 3 min avg | ~$0.10 |
 | Qdrant (self-hosted) | Single node | $0 (infra cost only) |
 | **Total API costs** | | **~$37/month** |
 
@@ -220,13 +224,13 @@ python -m pytest tests/ -v
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `OPENAI_API_KEY` | Yes | — | OpenAI API key |
+| `GEMINI_API_KEY` | Yes | — | Google Gemini API key |
+| `APIFY_API_TOKEN` | Yes | — | Apify API token for Instagram |
 | `DATABASE_URL` | No | `postgresql+asyncpg://postgres:postgres@localhost:5432/vidcompare` | Postgres connection |
 | `QDRANT_HOST` | No | `localhost` | Qdrant hostname |
 | `QDRANT_PORT` | No | `6333` | Qdrant port |
-| `GPT_MODEL` | No | `gpt-4o` | Model for answer generation |
-| `GPT_MINI_MODEL` | No | `gpt-4o-mini` | Model for query routing |
-| `EMBEDDING_MODEL` | No | `text-embedding-3-small` | Embedding model |
+| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Model for generation and routing |
+| `EMBEDDING_MODEL` | No | `gemini-embedding-2` | Embedding model |
 | `CHUNK_SIZE` | No | `250` | Target tokens per chunk |
 | `CHUNK_OVERLAP` | No | `30` | Overlap tokens between chunks |
 

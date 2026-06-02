@@ -24,6 +24,11 @@ export default function VideoCard({ video, label }: VideoCardProps) {
         <div className={`video-card-label label-${label.toLowerCase()}`}>
           {label}
         </div>
+        {video.is_cached && (
+          <div className="video-card-label" style={{right: '1rem', left: 'auto', background: 'rgba(255, 193, 7, 0.2)', color: '#ffc107', border: '1px solid rgba(255, 193, 7, 0.4)'}}>
+            Loaded from cache ⚡
+          </div>
+        )}
 
         {/* Thumbnail */}
         <div className="video-thumbnail-wrapper">

@@ -34,8 +34,8 @@ export default function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, [input]);
 
-  const handleSend = async () => {
-    const trimmed = input.trim();
+  const sendMessage = async (text: string) => {
+    const trimmed = text.trim();
     if (!trimmed || streaming) return;
 
     const userMessage: ChatMessageType = { role: 'user', content: trimmed };
@@ -43,7 +43,6 @@ export default function ChatPanel({ sessionId }: ChatPanelProps) {
     setInput('');
     setStreaming(true);
 
-    // add empty assistant message that we'll stream into
     let assistantContent = '';
     setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
@@ -61,13 +60,13 @@ export default function ChatPanel({ sessionId }: ChatPanelProps) {
           return updated;
         });
       },
-      (citations) => {
+      (citations, suggestedQuestions) => {
         // attach citations to the last message
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
-          if (last.role === 'assistant' && citations.length > 0) {
-            updated[updated.length - 1] = { ...last, citations };
+          if (last.role === 'assistant') {
+            updated[updated.length - 1] = { ...last, citations, suggested_questions: suggestedQuestions };
           }
           return updated;
         });
@@ -90,6 +89,8 @@ export default function ChatPanel({ sessionId }: ChatPanelProps) {
     );
   };
 
+  const handleSend = () => sendMessage(input);
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -106,7 +107,39 @@ export default function ChatPanel({ sessionId }: ChatPanelProps) {
 
       <div className="chat-messages">
         {messages.map((msg, i) => (
-          <ChatMessage key={i} message={msg} />
+          <div key={i}>
+            <ChatMessage message={msg} />
+            {msg.suggested_questions && msg.suggested_questions.length > 0 && (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginLeft: '2.5rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+                {msg.suggested_questions.map((q, qIdx) => (
+                  <button
+                    key={qIdx}
+                    onClick={() => sendMessage(q)}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '16px',
+                      padding: '0.4rem 0.8rem',
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseOver={e => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                      e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseOut={e => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
 
         {streaming && messages[messages.length - 1]?.content === '' && (

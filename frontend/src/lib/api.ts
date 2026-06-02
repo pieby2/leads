@@ -70,7 +70,7 @@ export async function streamChat(
   sessionId: string,
   message: string,
   onToken: (token: string) => void,
-  onDone: (citations: any[]) => void,
+  onDone: (citations: any[], suggestedQuestions: string[]) => void,
   onError: (error: string) => void
 ): Promise<void> {
   try {
@@ -101,6 +101,7 @@ export async function streamChat(
     const decoder = new TextDecoder();
     let buffer = '';
     let citations: any[] = [];
+    let suggestedQuestions: string[] = [];
 
     while (true) {
       const { done, value } = await reader.read();
@@ -129,10 +130,17 @@ export async function streamChat(
           if (parsed.citations) {
             citations = parsed.citations;
           }
+          if (parsed.suggested_questions) {
+            suggestedQuestions = parsed.suggested_questions;
+          }
           // handle error events from the stream
           if (parsed.error) {
             onError(parsed.error);
             return;
+          }
+          if (parsed.done) {
+             onDone(citations, suggestedQuestions);
+             return;
           }
         } catch {
           // not JSON, treat as raw text token
@@ -140,11 +148,10 @@ export async function streamChat(
         }
       }
     }
-
-    // stream ended without [DONE] — still call onDone
-    onDone(citations);
+    // fallback if stream ends without parsed.done
+    onDone(citations, suggestedQuestions);
   } catch (err: any) {
-    onError(err.message || 'Connection failed');
+    onError(err.message || 'Stream failed');
   }
 }
 

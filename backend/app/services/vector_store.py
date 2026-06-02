@@ -73,15 +73,19 @@ class VectorStoreService:
         self,
         query_embedding: list[float],
         session_id: str,
+        source_url: str | None = None,
         video_id: str | None = None,
         hook_only: bool = False,
         top_k: int = 5,
         collection_name: str = "video_chunks_v2",
     ) -> list[dict]:
-        """Search for relevant chunks, filtered by session and optionally video/hook."""
-        must_filters = [
-            FieldCondition(key="session_id", match=MatchValue(value=session_id)),
-        ]
+        """Search for relevant chunks, filtered by source_url (for deduplication)."""
+        must_filters = []
+        if source_url:
+            must_filters.append(FieldCondition(key="source_url", match=MatchValue(value=source_url)))
+        else:
+            must_filters.append(FieldCondition(key="session_id", match=MatchValue(value=session_id)))
+
         if video_id:
             must_filters.append(
                 FieldCondition(key="video_id", match=MatchValue(value=video_id))

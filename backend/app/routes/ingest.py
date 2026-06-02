@@ -1,27 +1,24 @@
 import uuid
-
+import structlog
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-import structlog
+from redis import Redis
+from rq import Queue
 
 from app.config import get_settings
 from app.database import get_db
-from app.db.models import Session, Video, User
-from app.models import IngestRequest, IngestResponse, VideoSummary, ErrorResponse
-from app.services.youtube import YouTubeService
-from app.services.instagram import InstagramService
-from app.services.transcription import TranscriptionService
-from app.services.chunking import chunk_transcript, compute_engagement_rate
-from app.services.embeddings import EmbeddingClient
-from app.services.vector_store import VectorStoreService
+from app.db.models import Session, User
+from app.models import IngestRequest, IngestResponse, ErrorResponse
 from app.core.auth import get_current_user
+from app.tasks import process_ingestion_job
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["ingest"])
 
 settings = get_settings()
+redis_conn = Redis.from_url(settings.redis_url)
+q = Queue(connection=redis_conn)
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_videos(
@@ -42,9 +39,6 @@ async def ingest_videos(
             ).model_dump(),
         )
 
-    transcription_service = TranscriptionService(api_key=api_key)
-    embedder = EmbeddingClient(api_key=api_key)
-    
     # Check usage limits
     limit = 100 if current_user.tier == "free" else 1000
     if current_user.usage_this_month >= limit:
@@ -69,161 +63,35 @@ async def ingest_videos(
             user_id=current_user.id,
             youtube_url=str(req.youtube_url),
             instagram_url=str(req.instagram_url) if req.instagram_url else "",
-            status="processing",
+            status="queued",
         )
         db.add(session)
-        await db.flush()
+        await db.commit()
 
-        videos_response = {}
+        # Enqueue the background job
+        req_data = req.model_dump()
+        req_data["youtube_url"] = str(req_data["youtube_url"])
+        if req_data.get("instagram_url"):
+            req_data["instagram_url"] = str(req_data["instagram_url"])
 
-        videos_to_process = [("A", str(req.youtube_url), "youtube")]
-        if req.instagram_url:
-            videos_to_process.append(("B", str(req.instagram_url), "instagram"))
+        q.enqueue(
+            process_ingestion_job,
+            session_id,
+            current_user.id,
+            req_data,
+            api_key,
+            job_timeout=600  # 10 minutes timeout
+        )
 
-        # process each video
-        for video_id, url, platform in videos_to_process:
-            url_str = str(url)
-
-            # check cache ?" if we already ingested this URL, reuse metadata
-            cached = await _check_cache(db, url_str)
-            if cached:
-                logger.info("cache hit", url=url_str, video_id=video_id)
-                meta = _video_to_meta(cached)
-                transcript = cached.transcript_json or []
-            else:
-                # instantiate services with the user's tokens if available, or from request
-                yt_token = req.youtube_access_token or current_user.youtube_access_token
-                yt_service = YouTubeService(access_token=yt_token)
-                
-                ig_token = current_user.instagram_access_token
-                ig_service = InstagramService(access_token=ig_token)
-                
-                # fetch fresh metadata + transcript
-                if platform == "youtube":
-                    meta = await yt_service.fetch_metadata(url_str)
-                    transcript = yt_service.fetch_transcript(url_str)
-                else:
-                    meta = await ig_service.fetch_metadata(url_str)
-                    transcript = ig_service.fetch_transcript(url_str)
-
-                # whisper fallback if no transcript
-                if not transcript:
-                    logger.info("no transcript, trying whisper", video_id=video_id)
-                    transcript = transcription_service.transcribe_from_url(url_str)
-
-            # compute engagement
-            engagement = compute_engagement_rate(
-                meta.get("views"), meta.get("likes"), meta.get("comments")
-            )
-            meta["engagement_rate"] = engagement
-
-            # chunk the transcript
-            chunks = chunk_transcript(
-                transcript,
-                chunk_size=settings.chunk_size,
-                overlap_tokens=settings.chunk_overlap,
-            )
-
-            # embed and store chunks (only if we have them)
-            if chunks:
-                try:
-                    texts = [c["text"] for c in chunks]
-                    embeddings = embedder.embed_texts(texts)
-                    VectorStoreService(settings.qdrant_host, settings.qdrant_port).upsert_chunks(
-                        session_id=session_id,
-                        video_id=video_id,
-                        chunks=chunks,
-                        embeddings=embeddings,
-                        metadata={"platform": platform, "source_url": url_str},
-                    )
-                except Exception as e:
-                    logger.error("failed to embed or store chunks", error=str(e), video_id=video_id)
-
-            # save to DB
-            video_record = Video(
-                session_id=session_id,
-                user_id=current_user.id,
-                video_id=video_id,
-                source_url=url_str,
-                platform=platform,
-                title=meta.get("title"),
-                creator_name=meta.get("creator"),
-                views=meta.get("views"),
-                likes=meta.get("likes"),
-                comments_count=meta.get("comments"),
-                duration_sec=meta.get("duration_sec"),
-                engagement_rate=engagement,
-                thumbnail_url=meta.get("thumbnail_url"),
-                upload_date=meta.get("upload_date"),
-                follower_count=meta.get("follower_count"),
-                hashtags=meta.get("hashtags", []),
-                transcript_json=transcript,
-            )
-            db.add(video_record)
-
-            videos_response[video_id] = VideoSummary(
-                title=meta.get("title"),
-                creator=meta.get("creator"),
-                platform=platform,
-                views=meta.get("views"),
-                likes=meta.get("likes"),
-                comments=meta.get("comments"),
-                duration_sec=meta.get("duration_sec"),
-                engagement_rate=engagement,
-                thumbnail_url=meta.get("thumbnail_url"),
-                upload_date=meta.get("upload_date"),
-                follower_count=meta.get("follower_count"),
-                hashtags=meta.get("hashtags", []),
-            )
-
-        # mark session ready
-        session.status = "ready"
-        await db.flush()
-
-        logger.info("ingestion complete", session_id=session_id)
-        return IngestResponse(session_id=session_id, videos=videos_response)
+        logger.info("ingestion queued", session_id=session_id)
+        return IngestResponse(session_id=session_id, status="queued")
 
     except Exception as e:
-        import tenacity
-        
-        err_msg = str(e)
-        if isinstance(e, tenacity.RetryError):
-            underlying = e.last_attempt.exception()
-            err_msg = f"Failed after retries: {str(underlying)}"
-            if "429" in str(underlying):
-                err_msg = "Google Gemini Rate Limit Exceeded: Please check your billing dashboard or try again later."
-
-        logger.error("ingestion failed", error=err_msg, session_id=session_id)
+        logger.error("ingestion queueing failed", error=str(e))
         return JSONResponse(
             status_code=500,
             content=ErrorResponse(
-                error_code="INGESTION_FAILED",
-                message=err_msg,
+                error_code="INGESTION_QUEUE_FAILED",
+                message=str(e),
             ).model_dump(),
         )
-
-
-async def _check_cache(db: AsyncSession, source_url: str) -> Video | None:
-    """Check if we've already ingested this URL before."""
-    result = await db.execute(
-        select(Video).where(Video.source_url == source_url).limit(1)
-    )
-    return result.scalar_one_or_none()
-
-
-def _video_to_meta(video: Video) -> dict:
-    """Convert a cached Video record back to a metadata dict."""
-    return {
-        "title": video.title,
-        "creator": video.creator_name,
-        "views": video.views,
-        "likes": video.likes,
-        "comments": video.comments_count,
-        "duration_sec": video.duration_sec,
-        "engagement_rate": video.engagement_rate,
-        "thumbnail_url": video.thumbnail_url,
-        "upload_date": video.upload_date,
-        "platform": video.platform,
-        "follower_count": video.follower_count,
-        "hashtags": video.hashtags or [],
-    }

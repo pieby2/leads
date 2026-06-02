@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy import (
     Column, String, BigInteger, Float, DateTime, JSON, Text,
-    Index, Integer, ForeignKey
+    Index, Integer, ForeignKey, Boolean
 )
 
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -80,6 +80,7 @@ class Video(Base):
     upload_date = Column(String, nullable=True)
     follower_count = Column(BigInteger, nullable=True)
     hashtags = Column(JSON, nullable=True)
+    is_cached = Column(Boolean, default=False)
 
     transcript_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

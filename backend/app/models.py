@@ -22,11 +22,13 @@ class VideoSummary(BaseModel):
     upload_date: Optional[str] = None
     follower_count: Optional[int] = None
     hashtags: Optional[list[str]] = None
+    is_cached: bool = False
 
 
 class IngestResponse(BaseModel):
     session_id: str
-    videos: dict[str, VideoSummary]  # keys are 'A' and 'B'
+    status: str = "queued"
+    videos: Optional[dict[str, VideoSummary]] = None
 
 
 class ChatRequest(BaseModel):

@@ -11,9 +11,11 @@ from app.db.models import Session, Video
 from app.models import ChatRequest, ErrorResponse
 from app.rag.graph import run_rag_graph_stream
 from app.core.auth import get_current_user
+from app.config import get_settings
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["chat"])
+settings = get_settings()
 
 
 @router.post("/chat")
@@ -57,6 +59,7 @@ async def chat(
     videos_metadata = {}
     for v in video_records:
         videos_metadata[v.video_id] = {
+            "source_url": v.source_url,
             "title": v.title,
             "creator": v.creator_name,
             "platform": v.platform,
@@ -71,9 +74,27 @@ async def chat(
             "hashtags": v.hashtags or [],
         }
 
+    def generate_suggested_questions(api_key: str, message: str, answer: str) -> list[str]:
+        import google.genai as genai
+        try:
+            client = genai.Client(api_key=api_key or settings.gemini_api_key)
+            prompt = f"Based on the user's last message: '{message}'\nAnd the assistant's answer:\n'{answer}'\n\nGenerate exactly 3 short, smart follow-up questions the user could ask next. Output ONLY a JSON list of 3 strings."
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+            )
+            # clean json if it contains markdown formatting
+            text = response.text.replace('```json', '').replace('```', '').strip()
+            questions = json.loads(text)
+            return questions[:3]
+        except Exception as e:
+            logger.error("Failed to generate suggested questions", error=str(e))
+            return []
+
     def event_stream():
         """SSE generator. Each event is a JSON line."""
         try:
+            answer_so_far = ""
             for token, done, citations in run_rag_graph_stream(
                 session_id=req.session_id,
                 message=req.message,
@@ -81,8 +102,10 @@ async def chat(
                 gemini_api_key=req.gemini_api_key,
             ):
                 if done:
-                    data = json.dumps({"token": "", "done": True, "citations": citations or []})
+                    suggestions = generate_suggested_questions(req.gemini_api_key, req.message, answer_so_far)
+                    data = json.dumps({"token": "", "done": True, "citations": citations or [], "suggested_questions": suggestions})
                 else:
+                    answer_so_far += token
                     data = json.dumps({"token": token, "done": False})
                 yield f"data: {data}\n\n"
         except Exception as e:

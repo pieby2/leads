@@ -11,6 +11,7 @@ export interface VideoSummary {
   upload_date: string | null;
   follower_count: number | null;
   hashtags: string[] | null;
+  is_cached?: boolean;
 }
 
 export interface IngestResponse {
@@ -25,6 +26,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   citations?: Citation[];
+  suggested_questions?: string[];
 }
 
 export interface Citation {

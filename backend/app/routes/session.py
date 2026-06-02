@@ -73,6 +73,7 @@ async def get_session(session_id: str, db: AsyncSession = Depends(get_db), curre
             upload_date=v.upload_date,
             follower_count=v.follower_count,
             hashtags=v.hashtags or [],
+            is_cached=v.is_cached,
         ).model_dump()
 
     return {

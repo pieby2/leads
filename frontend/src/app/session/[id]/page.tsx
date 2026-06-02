@@ -41,17 +41,45 @@ export default function SessionPage() {
   }, [sessionId]);
 
   useEffect(() => {
-    fetchSession();
+    let mounted = true;
+    let ws: WebSocket;
 
-    // Poll while still loading - not the cleanest but works fine
-    const interval = setInterval(() => {
-      if (loading) {
-        fetchSession();
-      }
-    }, 3000);
+    const init = async () => {
+      await fetchSession();
+      
+      // If still not ready after initial fetch, connect to WebSocket
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'wss://vidcompare-backend.onrender.com';
+      // Local dev fallback if needed, but we'll default to prod since it's hosted
+      const finalWsUrl = window.location.hostname === 'localhost' ? 'ws://localhost:8000' : wsUrl;
+      
+      ws = new WebSocket(`${finalWsUrl}/api/v1/ws/session/${sessionId}`);
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.status === 'ready') {
+            fetchSession();
+          } else if (data.status === 'error') {
+            setError(data.step || 'Something went wrong processing your videos.');
+            setLoading(false);
+          } else {
+            const p = data.progress || 0;
+            const mappedStep = Math.floor((p / 100) * (INGESTION_STEPS.length - 1));
+            setCurrentStep(mappedStep);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+    };
 
-    return () => clearInterval(interval);
-  }, [fetchSession, loading]);
+    init();
+
+    return () => {
+      mounted = false;
+      if (ws) ws.close();
+    };
+  }, [sessionId]);
 
   // TODO: maybe add a timeout after 2 min if it's still loading
 

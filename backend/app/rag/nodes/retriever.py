@@ -31,9 +31,11 @@ def retrieve_context(state: dict) -> dict:
     top_k = 5
 
     for vid_id in target_videos:
+        source_url = state.get("videos", {}).get(vid_id, {}).get("source_url")
         hits = vs.search(
             query_embedding=query_embedding,
             session_id=session_id,
+            source_url=source_url,
             video_id=vid_id,
             hook_only=hook_only,
             top_k=top_k,
