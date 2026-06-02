@@ -33,6 +33,7 @@ export default function VideoCard({ video, label }: VideoCardProps) {
         {/* Thumbnail */}
         <div className="video-thumbnail-wrapper">
           {video.thumbnail_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={
                 video.platform === 'instagram' 

@@ -118,7 +118,7 @@ export async function streamChat(
 
         const data = trimmed.slice(6);
         if (data === '[DONE]') {
-          onDone(citations);
+          onDone(citations, suggestedQuestions);
           return;
         }
 

@@ -79,7 +79,7 @@ export default function SessionPage() {
       mounted = false;
       if (ws) ws.close();
     };
-  }, [sessionId]);
+  }, [sessionId, fetchSession]);
 
   // TODO: maybe add a timeout after 2 min if it's still loading
 
