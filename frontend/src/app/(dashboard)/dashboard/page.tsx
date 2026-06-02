@@ -23,15 +23,19 @@ export default function DashboardPage() {
     if (status === 'authenticated') {
       getUserSessions()
         .then(data => {
-          setSessions(data);
-          setLoading(false);
+          if (data.length === 0) {
+            router.push('/');
+          } else {
+            setSessions(data);
+            setLoading(false);
+          }
         })
         .catch(err => {
           setError(err.message);
           setLoading(false);
         });
     }
-  }, [status]);
+  }, [status, router]);
 
   if (status === 'loading' || loading) {
     return <div>Loading dashboard...</div>;
