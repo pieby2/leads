@@ -14,7 +14,15 @@ export default function LandingPage() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/signup');
+    }
+  }, [status, router]);
+
   if (!mounted) return null;
+  if (status === 'loading' || status === 'unauthenticated') return null;
+
 
   return (
     <div className="landing-page">
