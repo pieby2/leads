@@ -63,10 +63,7 @@ async def get_session(session_id: str, db: AsyncSession = Depends(get_db), curre
         logger.error(f"Error fetching session: {str(e)}\n{traceback.format_exc()}")
         return JSONResponse(
             status_code=500,
-            content=ErrorResponse(
-                error_code="SESSION_FETCH_ERROR",
-                message=f"Internal Server Error: {str(e)}",
-            ).model_dump(),
+            content={"detail": f"Internal Server Error: {str(e)}"},
         )
 
     videos = {}
