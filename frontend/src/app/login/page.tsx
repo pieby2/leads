@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 
-export default function SignupPage() {
+export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,20 +17,6 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // 1. Register the user
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://vidcompare-backend.onrender.com';
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.detail || 'Failed to register');
-      }
-
-      // 2. Automatically sign them in
       const result = await signIn('credentials', {
         email,
         password,
@@ -42,11 +27,10 @@ export default function SignupPage() {
         throw new Error(result.error);
       }
 
-      // 3. Redirect to dashboard
-      router.push('/dashboard');
+      router.push('/');
       router.refresh();
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
@@ -58,7 +42,7 @@ export default function SignupPage() {
       <div className="landing-bg-glow-2" />
       
       <div className="glass-card" style={{ padding: '2rem', width: '100%', maxWidth: '400px', position: 'relative', zIndex: 10 }}>
-        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center', fontSize: '1.5rem', fontWeight: 600 }}>Create an Account</h2>
+        <h2 style={{ marginBottom: '1.5rem', textAlign: 'center', fontSize: '1.5rem', fontWeight: 600 }}>Welcome Back</h2>
         
         {error && (
           <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.75rem', borderRadius: '0.5rem', marginBottom: '1rem', fontSize: '0.875rem' }}>
@@ -96,17 +80,17 @@ export default function SignupPage() {
             disabled={loading}
             style={{ width: '100%', marginTop: '0.5rem' }}
           >
-            {loading ? 'Creating account...' : 'Sign Up'}
+            {loading ? 'Logging in...' : 'Log In'}
           </button>
         </form>
 
         <p style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Already have an account?{' '}
+          Don't have an account?{' '}
           <button 
-            onClick={() => router.push('/login')} 
+            onClick={() => router.push('/signup')} 
             style={{ color: 'var(--accent-purple)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
-            Log in
+            Sign up
           </button>
         </p>
       </div>
