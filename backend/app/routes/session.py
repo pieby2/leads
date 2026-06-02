@@ -38,25 +38,36 @@ async def get_my_sessions(db: AsyncSession = Depends(get_db), current_user = Dep
 async def get_session(session_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Return session metadata and video summaries."""
 
-    result = await db.execute(
-        select(Session).where(Session.id == session_id)
-    )
-    session = result.scalar_one_or_none()
+    try:
+        result = await db.execute(
+            select(Session).where(Session.id == session_id)
+        )
+        session = result.scalar_one_or_none()
 
-    if not session:
+        if not session:
+            return JSONResponse(
+                status_code=404,
+                content=ErrorResponse(
+                    error_code="SESSION_NOT_FOUND",
+                    message=f"Session {session_id} not found",
+                ).model_dump(),
+            )
+
+        # fetch videos
+        videos_result = await db.execute(
+            select(Video).where(Video.session_id == session_id)
+        )
+        video_records = videos_result.scalars().all()
+    except Exception as e:
+        import traceback
+        logger.error(f"Error fetching session: {str(e)}\n{traceback.format_exc()}")
         return JSONResponse(
-            status_code=404,
+            status_code=500,
             content=ErrorResponse(
-                error_code="SESSION_NOT_FOUND",
-                message=f"Session {session_id} not found",
+                error_code="SESSION_FETCH_ERROR",
+                message=f"Internal Server Error: {str(e)}",
             ).model_dump(),
         )
-
-    # fetch videos
-    videos_result = await db.execute(
-        select(Video).where(Video.session_id == session_id)
-    )
-    video_records = videos_result.scalars().all()
 
     videos = {}
     for v in video_records:
