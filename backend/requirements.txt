@@ -23,5 +23,4 @@ stripe
 redis
 alembic
 python-multipart
-rq
 websockets

@@ -1,28 +1,26 @@
 import uuid
 import structlog
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis import Redis
-from rq import Queue
 
 from app.config import get_settings
 from app.database import get_db
 from app.db.models import Session, User
 from app.models import IngestRequest, IngestResponse, ErrorResponse
 from app.core.auth import get_current_user
-from app.tasks import process_ingestion_job
+from app.tasks import async_process_ingestion
 
 logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["ingest"])
 
 settings = get_settings()
-redis_conn = Redis.from_url(settings.redis_url)
-q = Queue(connection=redis_conn)
 
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_videos(
     req: IngestRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -68,19 +66,21 @@ async def ingest_videos(
         db.add(session)
         await db.commit()
 
-        # Enqueue the background job
+        # Enqueue the background job using FastAPI BackgroundTasks
         req_data = req.model_dump()
         req_data["youtube_url"] = str(req_data["youtube_url"])
         if req_data.get("instagram_url"):
             req_data["instagram_url"] = str(req_data["instagram_url"])
 
-        q.enqueue(
-            process_ingestion_job,
-            session_id,
-            current_user.id,
-            req_data,
-            api_key,
-            job_timeout=600  # 10 minutes timeout
+        # Create a fire-and-forget task attached to this request
+        import asyncio
+        asyncio.create_task(
+            async_process_ingestion(
+                session_id,
+                current_user.id,
+                req_data,
+                api_key
+            )
         )
 
         logger.info("ingestion queued", session_id=session_id)
