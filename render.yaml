@@ -24,6 +24,8 @@ services:
       # LLM Keys
       - key: OPENAI_API_KEY
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
         
       # Stripe
       - key: STRIPE_SECRET_KEY

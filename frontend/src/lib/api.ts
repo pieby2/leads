@@ -56,7 +56,7 @@ export async function ingestVideos(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.detail || `Ingestion failed (${res.status})`);
+    throw new Error(body.detail || body.message || `Ingestion failed (${res.status})`);
   }
 
   return res.json();
@@ -88,7 +88,7 @@ export async function streamChat(
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      onError(body.detail || `Chat failed (${res.status})`);
+      onError(body.detail || body.message || `Chat failed (${res.status})`);
       return;
     }
 
